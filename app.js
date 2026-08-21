@@ -36,9 +36,25 @@ function init() {
 
   // Drop zone
   const dz = $('dropZone');
-  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
-  dz.addEventListener('dragleave', e => { if (!dz.contains(e.relatedTarget)) dz.classList.remove('drag-over'); });
-  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); addFiles(e.dataTransfer.files); });
+  dz.addEventListener('dragover', e => {
+    e.preventDefault();
+    if (!dz.classList.contains('drag-over')) {
+      dz.classList.add('drag-over');
+      gsap.to(dz, { scale: 1.015, duration: 0.2, ease: 'power2.out' });
+    }
+  });
+  dz.addEventListener('dragleave', e => {
+    if (!dz.contains(e.relatedTarget)) {
+      dz.classList.remove('drag-over');
+      gsap.to(dz, { scale: 1, duration: 0.18, ease: 'power2.inOut' });
+    }
+  });
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    gsap.to(dz, { scale: 1, duration: 0.12, ease: 'power2.in' });
+    addFiles(e.dataTransfer.files);
+  });
   $('browseBtn').onclick = () => $('fileInput').click();
   $('fileInput').onchange = e => { addFiles(e.target.files); e.target.value = ''; };
   $('addMoreBtn').onclick = () => $('fileInput').click();
@@ -114,7 +130,24 @@ function init() {
   $('autoCropChk').onchange = e => { autoCrop = e.target.checked; saveSettings(); };
 
   // Advanced accordion
-  $('advancedToggle').onclick = () => $('advancedSection').classList.toggle('open');
+  // Advanced accordion — GSAP height animation
+  const advBody = $('advancedSection').querySelector('.sp-advanced-body');
+  const advChevron = $('advancedSection').querySelector('.sp-advanced-chevron');
+  $('advancedToggle').onclick = () => {
+    const section = $('advancedSection');
+    const isOpen = section.classList.contains('open');
+    if (isOpen) {
+      section.classList.remove('open');
+      gsap.to(advBody, { height: 0, duration: 0.25, ease: 'power2.inOut' });
+      gsap.to(advChevron, { rotation: 0, duration: 0.25, ease: 'power2.inOut' });
+    } else {
+      section.classList.add('open');
+      const h = advBody.scrollHeight;
+      gsap.fromTo(advBody, { height: 0 }, { height: h, duration: 0.28, ease: 'power2.out',
+        onComplete: () => gsap.set(advBody, { height: 'auto' }) });
+      gsap.to(advChevron, { rotation: 180, duration: 0.28, ease: 'power2.out' });
+    }
+  };
 
   // Info tooltips — position: fixed to escape overflow clipping
   document.querySelectorAll('.info-tip').forEach(tip => {
@@ -205,14 +238,31 @@ function init() {
       $('card-' + id)?.classList.remove('done', 'processing', 'error');
       $('card-' + id)?.classList.add('img-card');
     } else if (btn.dataset.action === 'remove') {
+      const cardEl = $('card-' + id);
       items.splice(items.indexOf(item), 1);
-      $('card-' + id)?.remove();
-      updateProcessBtn();
-      if (items.length === 0) {
-        $('workArea').classList.add('hidden');
-        $('landing').classList.remove('hidden');
-        $('postProcessBtns').classList.add('hidden');
-        $('summaryText').textContent = '';
+      const goToLanding = items.length === 0;
+      const afterRemove = () => {
+        updateProcessBtn();
+        if (goToLanding) {
+          $('workArea').classList.add('hidden');
+          $('landing').classList.remove('hidden');
+          $('postProcessBtns').classList.add('hidden');
+          $('summaryText').textContent = '';
+        }
+      };
+      if (cardEl) {
+        gsap.to(cardEl, {
+          opacity: 0, scale: 0, duration: 0.22, ease: 'back.in(1.4)',
+          onComplete: () => {
+            gsap.to(cardEl, {
+              width: 0, minWidth: 0, padding: 0, margin: 0,
+              duration: 0.18, ease: 'power2.inOut',
+              onComplete: () => { cardEl.remove(); afterRemove(); }
+            });
+          }
+        });
+      } else {
+        afterRemove();
       }
     }
   });
@@ -312,10 +362,14 @@ function init() {
   } catch {}
 
   // Actions
-  $('processBtn').onclick = processAll;
+  $('processBtn').onclick = () => {
+    gsap.fromTo($('processBtn'), { scale: 0.95 }, { scale: 1, duration: 0.35, ease: 'elastic.out(1, 0.4)' });
+    processAll();
+  };
   $('downloadBtn').onclick = downloadZip;
   $('testImagesBtn').onclick = loadTestImages;
   $('renameAllBtn').onclick = openRenameModal;
+  $('clearAllBtn').onclick = clearAll;
   $('rmClose').onclick = closeRenameModal;
   $('rmCancel').onclick = closeRenameModal;
   $('rmSave').onclick = saveRenameModal;
@@ -363,6 +417,18 @@ async function loadTestImages() {
     { seed: 44, w: 1200, h: 1200 },
     { seed: 55, w: 800,  h: 1000 },
     { seed: 66, w: 1500, h: 900  },
+    { seed: 77, w: 1000, h: 1250 },
+    { seed: 88, w: 1300, h: 1300 },
+    { seed: 99, w: 950,  h: 1200 },
+    { seed: 10, w: 1600, h: 1200 },
+    { seed: 12, w: 1100, h: 1100 },
+    { seed: 13, w: 700,  h: 875  },
+    { seed: 14, w: 1500, h: 1500 },
+    { seed: 15, w: 1200, h: 960  },
+    { seed: 16, w: 850,  h: 1063 },
+    { seed: 17, w: 1350, h: 1350 },
+    { seed: 18, w: 600,  h: 750  },
+    { seed: 19, w: 1400, h: 1400 },
   ];
 
   try {
@@ -376,11 +442,11 @@ async function loadTestImages() {
     addFiles(files);
   } catch {
     btn.textContent = 'Kunde inte hämta';
-    setTimeout(() => { btn.textContent = 'ladda 6 testbilder'; btn.disabled = false; }, 2500);
+    setTimeout(() => { btn.textContent = 'ladda några testbilder'; btn.disabled = false; }, 2500);
     return;
   }
 
-  btn.textContent = 'ladda 6 testbilder';
+  btn.textContent = 'ladda några testbilder';
   btn.disabled = false;
 }
 
@@ -391,11 +457,24 @@ function addFiles(files) {
   $('landing').classList.add('hidden');
   $('workArea').classList.remove('hidden');
 
+  const newCards = [];
   imgs.forEach(file => {
     const id = ++idCounter;
     const item = { id, file, name: file.name, originalSize: file.size, originalW: 0, originalH: 0, status: 'pending', blob: null, outName: '' };
     items.push(item);
     appendCard(item);
+    newCards.push($('card-' + id));
+  });
+
+  newCards.forEach(card => {
+    gsap.set(card, { opacity: 0, y: -40, x: (Math.random() * 30 - 15), scale: 0.85, rotation: (Math.random() * 20 - 10) });
+  });
+  gsap.to(newCards, {
+    opacity: 1, y: 0, x: 0, scale: 1, rotation: 0,
+    duration: 0.45,
+    ease: 'power2.out',
+    stagger: Math.min(0.06, 0.4 / newCards.length),
+    clearProps: 'all'
   });
 
   updateProcessBtn();
@@ -408,6 +487,7 @@ function appendCard(item) {
   card.className = 'img-card';
   card.id = 'card-' + item.id;
   card.draggable = true;
+  card.style.opacity = '0';
   card.innerHTML = `
     <div class="card-thumb">
       <img src="${url}" alt="" loading="lazy" draggable="false">
@@ -433,6 +513,14 @@ function appendCard(item) {
       <div class="card-status pending" id="status-${item.id}">Väntar</div>
     </div>`;
   $('imageGrid').appendChild(card);
+
+  card.addEventListener('mouseenter', () => {
+    if (!card.classList.contains('dragging'))
+      gsap.to(card, { y: -4, duration: 0.2, ease: 'power2.out' });
+  });
+  card.addEventListener('mouseleave', () => {
+    gsap.to(card, { y: 0, duration: 0.2, ease: 'power2.out' });
+  });
 
   const img = card.querySelector('img');
   img.onload = () => {
@@ -633,6 +721,8 @@ function finalizeCard(item, blob, cw, ch, ext) {
     el.className = 'card-status done';
     el.innerHTML = cw + '\xD7' + ch + ' \xB7 ' + formatBytes(blob.size) + ' <span class="pct-pill">\u2212' + pct + '%</span>';
   }
+  const cardEl = $('card-' + item.id);
+  if (cardEl) gsap.fromTo(cardEl, { scale: 1.04 }, { scale: 1, duration: 0.22, ease: 'power2.out' });
 }
 
 async function processItemWorker(item, settings, ext) {
@@ -815,6 +905,13 @@ function setStatus(id, cls, text) {
   if (!el) return;
   el.className = 'card-status ' + cls;
   el.textContent = text;
+  if (cls === 'error') {
+    const card = $('card-' + id);
+    if (card) gsap.fromTo(card, { x: 0 }, {
+      x: 7, duration: 0.06, ease: 'none', yoyo: true, repeat: 5,
+      onComplete: () => gsap.set(card, { x: 0 })
+    });
+  }
 }
 
 function updateSummary() {
@@ -826,11 +923,50 @@ function updateSummary() {
   const savedBytes = origTotal - newTotal;
   const savedPct  = Math.round(savedBytes / origTotal * 100);
   const countStr  = done.length + ' st' + (errors.length ? ' <span class="stat-err">(' + errors.length + ' misslyckades)</span>' : '');
+  const savedSign = savedBytes >= 0;
   $('summaryText').innerHTML =
     '<div class="stat-row"><span class="stat-lbl">Bilder</span><span class="stat-val">' + countStr + '</span></div>' +
     '<div class="stat-row"><span class="stat-lbl">Originalstorlek</span><span class="stat-val">' + formatBytes(origTotal) + '</span></div>' +
     '<div class="stat-row"><span class="stat-lbl">Optimerad</span><span class="stat-val">' + formatBytes(newTotal) + '</span></div>' +
-    '<div class="stat-row stat-row-save"><span class="stat-lbl">Besparing</span><span class="stat-val stat-good">−' + formatBytes(savedBytes) + ' (' + savedPct + '%)</span></div>';
+    '<div class="stat-row stat-row-save"><span class="stat-lbl">Besparing</span><span class="stat-val ' + (savedSign ? 'stat-good' : 'stat-bad') + '" id="statSaved">0 B (0%)</span></div>';
+
+  gsap.from($('summaryText').querySelectorAll('.stat-row'), {
+    opacity: 0, y: 10, duration: 0.3, ease: 'power2.out', stagger: 0.07
+  });
+
+  const counter = { bytes: 0, pct: 0 };
+  gsap.to(counter, {
+    bytes: Math.abs(savedBytes), pct: Math.abs(savedPct),
+    duration: 1.8, ease: 'power2.out', delay: 0.3,
+    snap: { pct: 1 },
+    onUpdate() {
+      const el = $('statSaved');
+      const prefix = savedSign ? '\u2212' : '+';
+      if (el) el.textContent = prefix + formatBytes(Math.round(counter.bytes)) + ' (' + Math.round(counter.pct) + '%)';
+    }
+  });
+}
+
+function clearAll() {
+  if (!items.length) return;
+  const cards = [...$('imageGrid').querySelectorAll('.img-card')];
+  items = [];
+  const stagger = Math.min(0.06, 0.5 / cards.length);
+  const totalDuration = (cards.length - 1) * stagger + 0.25;
+
+  gsap.to(cards, {
+    opacity: 0, y: 10, scale: 0.95,
+    duration: 0.25, stagger, ease: 'power2.in'
+  });
+
+  gsap.delayedCall(totalDuration, () => {
+    $('imageGrid').innerHTML = '';
+    $('workArea').classList.add('hidden');
+    $('landing').classList.remove('hidden');
+    $('postProcessBtns').classList.add('hidden');
+    $('summaryText').textContent = '';
+    updateProcessBtn();
+  });
 }
 
 async function downloadZip() {
