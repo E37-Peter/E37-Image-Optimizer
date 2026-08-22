@@ -67,6 +67,15 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 }
 .hero-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
 .hero-title { font-size: 42px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; margin-bottom: 18px; }
+.hero-title-accent {
+  background: linear-gradient(120deg, #2e5c8a 0%, #5b9bd5 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+[data-theme="dark"] .hero-title-accent {
+  background: linear-gradient(120deg, #5b9bd5 0%, #93c5fd 100%);
+  -webkit-background-clip: text; background-clip: text;
+}
 .hero-lead { font-size: 16px; color: var(--muted); line-height: 1.7; max-width: 480px; margin: 0 auto; }
 
 .drop-zone {
@@ -84,9 +93,22 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .drop-browse { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 14px; text-decoration: underline; font-family: inherit; }
 .drop-browse:hover { color: var(--accent-h); }
 
+/* Format badges */
+.lp-format-badges { display: flex; gap: 6px; justify-content: center; margin-top: 14px; }
+.lp-format-badge {
+  font-size: 11px; font-weight: 600; letter-spacing: .04em;
+  color: var(--muted); background: var(--soft);
+  border: 1px solid var(--line); border-radius: 5px;
+  padding: 3px 8px;
+}
+
 /* Feature cards */
 .lp-features { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 60px; }
-.lp-feat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px 20px; }
+.lp-feat {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px 20px;
+  transition: box-shadow .2s;
+  will-change: transform;
+}
 .lp-feat-icon {
   width: 42px; height: 42px;
   background: color-mix(in srgb, var(--accent) 12%, transparent);
@@ -104,7 +126,8 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .lp-step { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1; max-width: 180px; }
 .lp-step-n {
   width: 36px; height: 36px; border-radius: 50%;
-  background: var(--accent); color: #fff;
+  background: transparent; color: var(--accent);
+  border: 2px solid var(--accent);
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 15px; flex-shrink: 0;
 }

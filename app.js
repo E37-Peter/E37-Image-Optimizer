@@ -37,6 +37,15 @@ function init() {
     .to('.lp-feat',    { opacity: 1, y: 0, stagger: 0.1,   duration: 0.45, ease: 'power2.out' }, '-=0.12')
     .to('.lp-steps',   { opacity: 1, y: 0, duration: 0.4,  ease: 'power2.out' }, '-=0.18');
 
+  // Pulsing drop icon (starts after entrance)
+  gsap.to('.drop-icon', { scale: 1.1, duration: 1.7, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.4 });
+
+  // Feature card hover
+  document.querySelectorAll('.lp-feat').forEach(card => {
+    card.addEventListener('mouseenter', () => gsap.to(card, { y: -5, duration: 0.2, ease: 'power2.out' }));
+    card.addEventListener('mouseleave', () => gsap.to(card, { y: 0,  duration: 0.2, ease: 'power2.out' }));
+  });
+
   // Theme
   const saved = localStorage.getItem('imgOptTheme');
   if (saved) document.documentElement.setAttribute('data-theme', saved);
