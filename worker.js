@@ -54,7 +54,7 @@ async function findQuality(canvas, fmt, targetBytes) {
 
 self.onmessage = async function(e) {
   const { id, buffer, mimeType, settings } = e.data;
-  const { size, ratio, customW, customH, fmt, quality, noUpscale, bgColor, sharpness, autoCrop, rotation } = settings;
+  const { size, ratio, customW, customH, fmt, quality, noUpscale, bgColor, sharpness, autoCrop, rotation, padding } = settings;
 
   try {
     const blob = new Blob([buffer], { type: mimeType });
@@ -82,8 +82,9 @@ self.onmessage = async function(e) {
     const rot = (rotation || 0) % 360;
     const swap = rot === 90 || rot === 270;
     const effW = swap ? srcH : srcW, effH = swap ? srcW : srcH;
+    const padPx = Math.round(Math.min(cw, ch) * (padding || 0) / 100);
     const maxScale = noUpscale ? 1 : Infinity;
-    const scale = Math.min(maxScale, cw / effW, ch / effH);
+    const scale = Math.min(maxScale, (cw - 2*padPx) / effW, (ch - 2*padPx) / effH);
     const dw = Math.round(effW * scale), dh = Math.round(effH * scale);
 
     ctx.save();

@@ -13,18 +13,30 @@ let sharpness = 0;
 let autoCrop = false;
 let sizeMode = false;
 let targetKB = 300;
+let padding = 0;
 
 function saveSettings() {
   localStorage.setItem('imgOptSettings', JSON.stringify({
     targetSize, outputFormat, quality, ratio, customW, customH,
     noUpscale: $('noUpscale').checked, bgColor, sharpness, autoCrop,
-    sizeMode, targetKB
+    sizeMode, targetKB, padding
   }));
 }
 
 const $ = id => document.getElementById(id);
 
 function init() {
+  // Landing entrance animation
+  gsap.set(['.lp-hero', '#dropZone', '.drop-test'], { opacity: 0, y: 18 });
+  gsap.set('.lp-feat', { opacity: 0, y: 22 });
+  gsap.set('.lp-steps', { opacity: 0, y: 12 });
+  gsap.timeline({ delay: 0.12 })
+    .to('.lp-hero',    { opacity: 1, y: 0, duration: 0.6,  ease: 'power2.out' })
+    .to('#dropZone',   { opacity: 1, y: 0, duration: 0.5,  ease: 'power2.out' }, '-=0.32')
+    .to('.drop-test',  { opacity: 1, y: 0, duration: 0.3,  ease: 'power2.out' }, '-=0.18')
+    .to('.lp-feat',    { opacity: 1, y: 0, stagger: 0.1,   duration: 0.45, ease: 'power2.out' }, '-=0.12')
+    .to('.lp-steps',   { opacity: 1, y: 0, duration: 0.4,  ease: 'power2.out' }, '-=0.18');
+
   // Theme
   const saved = localStorage.getItem('imgOptTheme');
   if (saved) document.documentElement.setAttribute('data-theme', saved);
@@ -125,6 +137,9 @@ function init() {
 
   // Sharpness
   $('sharpenSlider').oninput = e => { sharpness = parseInt(e.target.value); $('sharpenVal').textContent = e.target.value; saveSettings(); };
+
+  // Padding
+  $('paddingSlider').oninput = e => { padding = parseInt(e.target.value); $('paddingVal').textContent = e.target.value; saveSettings(); };
 
   // Auto-crop
   $('autoCropChk').onchange = e => { autoCrop = e.target.checked; saveSettings(); };
@@ -257,7 +272,7 @@ function init() {
             gsap.to(cardEl, {
               width: 0, minWidth: 0, padding: 0, margin: 0,
               duration: 0.18, ease: 'power2.inOut',
-              onComplete: () => { cardEl.remove(); afterRemove(); }
+              onComplete: () => { cardEl.remove(); afterRemove(); updateDuplicateWarnings(); }
             });
           }
         });
@@ -352,6 +367,11 @@ function init() {
         $('qualitySlider').disabled = true;
       }
       if (s.targetKB) { targetKB = s.targetKB; $('targetKBInput').value = s.targetKB; }
+      if (typeof s.padding === 'number') {
+        padding = s.padding;
+        $('paddingSlider').value = s.padding;
+        $('paddingVal').textContent = s.padding;
+      }
       if (s.bgColor) {
         bgColor = s.bgColor;
         document.querySelectorAll('.bg-swatch').forEach(b =>
@@ -376,6 +396,7 @@ function init() {
   $('rmOverlay').addEventListener('click', e => { if (e.target === $('rmOverlay')) closeRenameModal(); });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !$('rmOverlay').classList.contains('hidden')) closeRenameModal();
+    if (e.ctrlKey && e.key === 'Enter' && !$('workArea').classList.contains('hidden') && !processing) $('processBtn').click();
   });
 
   const applyArtnr = () => {
@@ -467,11 +488,11 @@ function addFiles(files) {
   });
 
   newCards.forEach(card => {
-    gsap.set(card, { opacity: 0, y: -40, x: (Math.random() * 30 - 15), scale: 0.85, rotation: (Math.random() * 20 - 10) });
+    gsap.set(card, { opacity: 0, y: -30, scale: 0.9 });
   });
   gsap.to(newCards, {
-    opacity: 1, y: 0, x: 0, scale: 1, rotation: 0,
-    duration: 0.45,
+    opacity: 1, y: 0, scale: 1,
+    duration: 0.35,
     ease: 'power2.out',
     stagger: Math.min(0.06, 0.4 / newCards.length),
     clearProps: 'all'
@@ -479,6 +500,28 @@ function addFiles(files) {
 
   updateProcessBtn();
   updatePngWarn();
+  updateDuplicateWarnings();
+}
+
+function updateDuplicateWarnings() {
+  const counts = {};
+  items.forEach(i => { counts[i.name] = (counts[i.name] || 0) + 1; });
+  items.forEach(item => {
+    const card = $('card-' + item.id);
+    if (!card) return;
+    const body = card.querySelector('.card-body');
+    let warn = body.querySelector('.card-dupwarn');
+    if (counts[item.name] > 1) {
+      if (!warn) {
+        warn = document.createElement('div');
+        warn.className = 'card-dupwarn';
+        warn.textContent = '⚠ Dubblettfilnamn';
+        body.appendChild(warn);
+      }
+    } else {
+      if (warn) warn.remove();
+    }
+  });
 }
 
 function appendCard(item) {
@@ -513,6 +556,9 @@ function appendCard(item) {
       <div class="card-status pending" id="status-${item.id}">Väntar</div>
     </div>`;
   $('imageGrid').appendChild(card);
+
+  card.style.cursor = 'pointer';
+  card.onclick = () => openPreview(item.id);
 
   card.addEventListener('mouseenter', () => {
     if (!card.classList.contains('dragging'))
@@ -599,7 +645,7 @@ async function processAll() {
   const workerSettings = {
     size, ratio, customW, customH, fmt, quality: q,
     noUpscale: $('noUpscale').checked, bgColor, sharpness, autoCrop,
-    sizeMode, targetKB
+    sizeMode, targetKB, padding
   };
 
   const total = items.length;
@@ -630,9 +676,14 @@ async function processAll() {
   await Promise.all(Array.from({ length: concurrency }, runSlot));
 
   processing = false;
-  $('processBtn').firstChild.textContent = 'Optimera igen ';
+  const doneCount = items.filter(i => i.status === 'done').length;
   const cs = $('processCount'); if (cs) cs.textContent = '';
-  updateProcessBtn();
+  $('processBtn').firstChild.textContent = `✓ ${doneCount} bilder klara! `;
+  gsap.fromTo($('processBtn'), { scale: 0.97 }, { scale: 1, duration: 0.4, ease: 'elastic.out(1, 0.4)' });
+  setTimeout(() => {
+    $('processBtn').firstChild.textContent = 'Optimera igen ';
+    updateProcessBtn();
+  }, 2500);
   updateSummary();
 
   if (items.some(i => i.status === 'done')) {
@@ -802,8 +853,9 @@ function processItem(item, size, fmt, q, ext) {
       const rot = (item.rotation || 0) % 360;
       const swap = rot === 90 || rot === 270;
       const effW = swap ? srcH : srcW, effH = swap ? srcW : srcH;
+      const padPx = Math.round(Math.min(cw, ch) * padding / 100);
       const maxScale = $('noUpscale').checked ? 1 : Infinity;
-      const scale = Math.min(maxScale, cw / effW, ch / effH);
+      const scale = Math.min(maxScale, (cw - 2*padPx) / effW, (ch - 2*padPx) / effH);
       const dw = Math.round(effW * scale), dh = Math.round(effH * scale);
       item.srcX = srcX; item.srcY = srcY; item.srcW = srcW; item.srcH = srcH;
       item.drawW = dw; item.drawH = dh;
@@ -1050,75 +1102,123 @@ function setSliderPct(pct) {
 
 function openPreview(id) {
   const item = items.find(i => i.id === id);
-  if (!item || !item.blob) return;
-  const doneItems = items.filter(i => i.status === 'done');
-  const idx = doneItems.findIndex(i => i.id === id);
+  if (!item) return;
+  const isProcessed = !!item.blob;
+  const allItems = items;
+  const navItems = isProcessed ? items.filter(i => i.status === 'done') : allItems;
+  const idx = navItems.findIndex(i => i.id === id);
 
   if (lbUrl) URL.revokeObjectURL(lbUrl);
   if (lbOrigUrl) URL.revokeObjectURL(lbOrigUrl);
-  lbUrl = URL.createObjectURL(item.blob);
-  lbOrigUrl = URL.createObjectURL(item.file);
 
   const before = $('lbBefore');
   const after = $('lbAfter');
-  after.onload = () => {
-    const cw = after.naturalWidth, ch = after.naturalHeight;
-    const maxW = window.innerWidth - 160, maxH = window.innerHeight - 140;
-    const s = Math.min(1, maxW / cw, maxH / ch);
-    const rw = Math.round(cw * s), rh = Math.round(ch * s);
-    after.style.width = rw + 'px';
-    after.style.height = rh + 'px';
-    $('lbAfterWrap').style.height = rh + 'px';
-    drawHistogram(after);
+  const divider = $('lbDivider');
+  const afterWrap = $('lbAfterWrap');
 
-    // Draw original on same canvas using stored draw params
-    const tmpUrl = URL.createObjectURL(item.file);
-    const origImg = new Image();
-    origImg.onload = () => {
-      URL.revokeObjectURL(tmpUrl);
-      const canvas = document.createElement('canvas');
-      canvas.width = cw; canvas.height = ch;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, cw, ch);
-      const lbRot = (item.rotation || 0) % 360;
-      const lbSwap = lbRot === 90 || lbRot === 270;
-      const lbSW = item.srcW ?? origImg.naturalWidth, lbSH = item.srcH ?? origImg.naturalHeight;
-      const lbDW = item.drawW, lbDH = item.drawH;
-      ctx.save();
-      ctx.translate(cw / 2, ch / 2);
-      ctx.rotate(lbRot * Math.PI / 180);
-      if (lbSwap) {
-        ctx.drawImage(origImg, item.srcX ?? 0, item.srcY ?? 0, lbSW, lbSH, -lbDH / 2, -lbDW / 2, lbDH, lbDW);
-      } else {
-        ctx.drawImage(origImg, item.srcX ?? 0, item.srcY ?? 0, lbSW, lbSH, -lbDW / 2, -lbDH / 2, lbDW, lbDH);
-      }
-      ctx.restore();
-      canvas.toBlob(blob => {
-        if (lbOrigUrl) URL.revokeObjectURL(lbOrigUrl);
-        lbOrigUrl = URL.createObjectURL(blob);
-        before.src = lbOrigUrl;
-        before.style.width = rw + 'px';
-        before.style.height = rh + 'px';
-        setSliderPct(50);
-      }, 'image/jpeg', 0.98);
+  if (isProcessed) {
+    lbUrl = URL.createObjectURL(item.blob);
+    lbOrigUrl = URL.createObjectURL(item.file);
+    divider.style.display = '';
+    afterWrap.style.display = '';
+    $('lbDl').style.display = '';
+    document.querySelectorAll('.lb-side-label').forEach(el => el.style.display = '');
+
+    after.onload = () => {
+      const cw = after.naturalWidth, ch = after.naturalHeight;
+      const maxW = window.innerWidth - 160, maxH = window.innerHeight - 140;
+      const s = Math.min(1, maxW / cw, maxH / ch);
+      const rw = Math.round(cw * s), rh = Math.round(ch * s);
+      after.style.width = rw + 'px';
+      after.style.height = rh + 'px';
+      afterWrap.style.height = rh + 'px';
+      drawHistogram(after);
+
+      const tmpUrl = URL.createObjectURL(item.file);
+      const origImg = new Image();
+      origImg.onload = () => {
+        URL.revokeObjectURL(tmpUrl);
+        const canvas = document.createElement('canvas');
+        canvas.width = cw; canvas.height = ch;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, cw, ch);
+        const lbRot = (item.rotation || 0) % 360;
+        const lbSwap = lbRot === 90 || lbRot === 270;
+        const lbSW = item.srcW ?? origImg.naturalWidth, lbSH = item.srcH ?? origImg.naturalHeight;
+        const lbDW = item.drawW, lbDH = item.drawH;
+        ctx.save();
+        ctx.translate(cw / 2, ch / 2);
+        ctx.rotate(lbRot * Math.PI / 180);
+        if (lbSwap) {
+          ctx.drawImage(origImg, item.srcX ?? 0, item.srcY ?? 0, lbSW, lbSH, -lbDH / 2, -lbDW / 2, lbDH, lbDW);
+        } else {
+          ctx.drawImage(origImg, item.srcX ?? 0, item.srcY ?? 0, lbSW, lbSH, -lbDW / 2, -lbDH / 2, lbDW, lbDH);
+        }
+        ctx.restore();
+        canvas.toBlob(blob => {
+          if (lbOrigUrl) URL.revokeObjectURL(lbOrigUrl);
+          lbOrigUrl = URL.createObjectURL(blob);
+          before.src = lbOrigUrl;
+          before.style.width = rw + 'px';
+          before.style.height = rh + 'px';
+          setSliderPct(50);
+        }, 'image/jpeg', 0.98);
+      };
+      origImg.src = tmpUrl;
     };
-    origImg.src = tmpUrl;
-  };
-  after.src = lbUrl;
+    after.src = lbUrl;
 
-  $('lbDl').href = lbUrl;
-  $('lbDl').download = item.outName;
-
-  const pct = Math.round((1 - item.blob.size / item.originalSize) * 100);
-  $('lbMeta').innerHTML = '<strong>' + esc(item.outName) + '</strong> &nbsp;&middot;&nbsp; '
-    + formatBytes(item.originalSize) + ' → ' + formatBytes(item.blob.size)
-    + ' <span class="pct-pill">−' + pct + '%</span>';
+    $('lbDl').href = lbUrl;
+    $('lbDl').download = item.outName;
+    const pct = Math.round((1 - item.blob.size / item.originalSize) * 100);
+    $('lbMeta').innerHTML = '<strong>' + esc(item.outName) + '</strong> &nbsp;&middot;&nbsp; '
+      + formatBytes(item.originalSize) + ' → ' + formatBytes(item.blob.size)
+      + ' <span class="pct-pill">−' + pct + '%</span>';
+  } else {
+    // Original-only mode
+    divider.style.display = 'none';
+    afterWrap.style.display = 'none';
+    $('lbDl').style.display = 'none';
+    document.querySelectorAll('.lb-side-label').forEach(el => el.style.display = 'none');
+    after.src = '';
+    lbOrigUrl = URL.createObjectURL(item.file);
+    before.onload = () => {
+      const cw = before.naturalWidth, ch = before.naturalHeight;
+      const maxW = window.innerWidth - 160, maxH = window.innerHeight - 140;
+      const s = Math.min(1, maxW / cw, maxH / ch);
+      const rw = Math.round(cw * s), rh = Math.round(ch * s);
+      before.style.width = rw + 'px';
+      before.style.height = rh + 'px';
+      afterWrap.style.height = rh + 'px';
+      drawHistogram(before);
+    };
+    before.src = lbOrigUrl;
+    $('lbMeta').innerHTML = '<strong>' + esc(item.name) + '</strong> &nbsp;&middot;&nbsp; '
+      + (item.originalW && item.originalH ? item.originalW + '×' + item.originalH + ' &nbsp;&middot;&nbsp; ' : '')
+      + formatBytes(item.originalSize);
+  }
 
   $('lbPrev').style.visibility = idx > 0 ? 'visible' : 'hidden';
-  $('lbNext').style.visibility = idx < doneItems.length - 1 ? 'visible' : 'hidden';
-  $('lbPrev').onclick = e => { e.stopPropagation(); openPreview(doneItems[idx - 1].id); };
-  $('lbNext').onclick = e => { e.stopPropagation(); openPreview(doneItems[idx + 1].id); };
+  $('lbNext').style.visibility = idx < navItems.length - 1 ? 'visible' : 'hidden';
+  $('lbPrev').onclick = e => { e.stopPropagation(); openPreview(navItems[idx - 1].id); };
+  $('lbNext').onclick = e => { e.stopPropagation(); openPreview(navItems[idx + 1].id); };
+
+  // EXIF
+  const exifEl = $('lbExif');
+  exifEl.classList.add('hidden');
+  if (typeof exifr !== 'undefined') {
+    exifr.parse(item.file, ['Make', 'Model', 'FNumber', 'ExposureTime', 'ISOSpeedRatings', 'FocalLength']).then(exif => {
+      if (!exif) return;
+      const parts = [];
+      if (exif.Make || exif.Model) parts.push([exif.Make, exif.Model].filter(Boolean).join(' '));
+      if (exif.FocalLength) parts.push(Math.round(exif.FocalLength) + ' mm');
+      if (exif.FNumber) parts.push('f/' + exif.FNumber);
+      if (exif.ExposureTime) parts.push(exif.ExposureTime < 1 ? '1/' + Math.round(1 / exif.ExposureTime) + 's' : exif.ExposureTime + 's');
+      if (exif.ISOSpeedRatings) parts.push('ISO ' + exif.ISOSpeedRatings);
+      if (parts.length) { exifEl.textContent = parts.join(' · '); exifEl.classList.remove('hidden'); }
+    }).catch(() => {});
+  }
 
   $('lbOverlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
