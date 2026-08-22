@@ -27,29 +27,35 @@ const $ = id => document.getElementById(id);
 
 function init() {
   // Landing entrance animation
-  const dotGrid = $('dotGrid');
   gsap.set(['.lp-hero', '#dropZone', '.drop-test'], { opacity: 0, y: 18 });
   gsap.set('.lp-feat', { opacity: 0, y: 22 });
   gsap.set('.lp-steps', { opacity: 0, y: 12 });
   gsap.timeline({ delay: 0.12 })
-    .to(dotGrid,       { opacity: 1,   duration: 1.2, ease: 'power2.out' })
-    .to('.lp-hero',    { opacity: 1, y: 0, duration: 0.6,  ease: 'power2.out' }, '-=0.9')
+    .to('.lp-hero',    { opacity: 1, y: 0, duration: 0.6,  ease: 'power2.out' })
     .to('#dropZone',   { opacity: 1, y: 0, duration: 0.5,  ease: 'power2.out' }, '-=0.32')
     .to('.drop-test',  { opacity: 1, y: 0, duration: 0.3,  ease: 'power2.out' }, '-=0.18')
     .to('.lp-feat',    { opacity: 1, y: 0, stagger: 0.1,   duration: 0.45, ease: 'power2.out' }, '-=0.12')
     .to('.lp-steps',   { opacity: 1, y: 0, duration: 0.4,  ease: 'power2.out' }, '-=0.18');
 
-  // Dot grid mouse parallax
+  // Dot grid mouse parallax (via background-position)
+  const heroEl = document.querySelector('.lp-hero');
   const landingEl = $('landing');
+  let tBgX = 0, tBgY = 0, cBgX = 0, cBgY = 0, ticker = null;
+  const startTicker = () => {
+    if (ticker) return;
+    ticker = gsap.ticker.add(() => {
+      cBgX += (tBgX - cBgX) * 0.07;
+      cBgY += (tBgY - cBgY) * 0.07;
+      heroEl.style.backgroundPosition = `calc(50% + ${cBgX.toFixed(2)}px) calc(50% + ${cBgY.toFixed(2)}px)`;
+    });
+  };
   landingEl.addEventListener('mousemove', e => {
-    const r = landingEl.getBoundingClientRect();
-    const dx = ((e.clientX - r.left)  / r.width  - 0.5) * 2;
-    const dy = ((e.clientY - r.top)   / r.height - 0.5) * 2;
-    gsap.to(dotGrid, { x: dx * 16, y: dy * 10, duration: 0.9, ease: 'power2.out', overwrite: 'auto' });
+    const r = heroEl.getBoundingClientRect();
+    tBgX = ((e.clientX - r.left) / r.width  - 0.5) * 24;
+    tBgY = ((e.clientY - r.top)  / r.height - 0.5) * 16;
+    startTicker();
   });
-  landingEl.addEventListener('mouseleave', () => {
-    gsap.to(dotGrid, { x: 0, y: 0, duration: 1.5, ease: 'power2.out', overwrite: 'auto' });
-  });
+  landingEl.addEventListener('mouseleave', () => { tBgX = 0; tBgY = 0; });
 
   // Pulsing drop icon (starts after entrance)
   gsap.to('.drop-icon', { scale: 1.1, duration: 1.7, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.4 });
