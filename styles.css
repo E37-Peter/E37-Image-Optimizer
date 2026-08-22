@@ -56,9 +56,12 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .landing { max-width: 760px; margin: 0 auto; padding: 72px 24px 80px; position: relative; overflow: hidden; }
 .lp-dot-grid {
   position: absolute; inset: -60px;
-  background-image: radial-gradient(circle, color-mix(in srgb, var(--accent) 22%, transparent) 1.2px, transparent 1.2px);
+  background-image: radial-gradient(circle, rgba(46, 92, 138, 0.35) 1.5px, transparent 1.5px);
   background-size: 28px 28px;
   pointer-events: none; z-index: 0; opacity: 0;
+}
+[data-theme="dark"] .lp-dot-grid {
+  background-image: radial-gradient(circle, rgba(91, 155, 213, 0.3) 1.5px, transparent 1.5px);
 }
 /* Ensure all landing content sits above dot grid */
 .mobile-notice, .lp-hero, .drop-zone, .drop-test, .lp-format-badges, .lp-features, .lp-steps {
