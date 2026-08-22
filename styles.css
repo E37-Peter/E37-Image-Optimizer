@@ -85,17 +85,11 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .drop-zone {
   border: 2px dashed var(--line); border-radius: 16px;
   padding: 56px 32px; text-align: center; cursor: default;
-  background-color: var(--panel);
-  background-image: radial-gradient(circle, rgba(46,92,138,0.13) 1.5px, transparent 1.5px);
-  background-size: 24px 24px;
-  background-position: center;
-  transition: border-color .2s, background-color .2s;
+  background: var(--panel);
+  transition: border-color .2s, background .2s;
   user-select: none;
 }
-[data-theme="dark"] .drop-zone {
-  background-image: radial-gradient(circle, rgba(91,155,213,0.12) 1.5px, transparent 1.5px);
-}
-.drop-zone.drag-over { border-color: var(--accent); background-color: color-mix(in srgb, var(--accent) 5%, transparent); }
+.drop-zone.drag-over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .drop-icon { color: var(--muted); margin-bottom: 18px; }
 .drop-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
 .drop-sub { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
