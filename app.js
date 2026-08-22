@@ -37,25 +37,24 @@ function init() {
     .to('.lp-feat',    { opacity: 1, y: 0, stagger: 0.1,   duration: 0.45, ease: 'power2.out' }, '-=0.12')
     .to('.lp-steps',   { opacity: 1, y: 0, duration: 0.4,  ease: 'power2.out' }, '-=0.18');
 
-  // Dot grid mouse parallax (via background-position)
-  const heroEl = document.querySelector('.lp-hero');
-  const landingEl = $('landing');
+  // Dot grid mouse parallax on drop zone (via background-position)
+  const dzEl = $('dropZone');
   let tBgX = 0, tBgY = 0, cBgX = 0, cBgY = 0, ticker = null;
   const startTicker = () => {
     if (ticker) return;
     ticker = gsap.ticker.add(() => {
       cBgX += (tBgX - cBgX) * 0.07;
       cBgY += (tBgY - cBgY) * 0.07;
-      heroEl.style.backgroundPosition = `calc(50% + ${cBgX.toFixed(2)}px) calc(50% + ${cBgY.toFixed(2)}px)`;
+      dzEl.style.backgroundPosition = `calc(50% + ${cBgX.toFixed(2)}px) calc(50% + ${cBgY.toFixed(2)}px)`;
     });
   };
-  landingEl.addEventListener('mousemove', e => {
-    const r = heroEl.getBoundingClientRect();
-    tBgX = ((e.clientX - r.left) / r.width  - 0.5) * 24;
-    tBgY = ((e.clientY - r.top)  / r.height - 0.5) * 16;
+  dzEl.addEventListener('mousemove', e => {
+    const r = dzEl.getBoundingClientRect();
+    tBgX = ((e.clientX - r.left) / r.width  - 0.5) * 20;
+    tBgY = ((e.clientY - r.top)  / r.height - 0.5) * 14;
     startTicker();
   });
-  landingEl.addEventListener('mouseleave', () => { tBgX = 0; tBgY = 0; });
+  dzEl.addEventListener('mouseleave', () => { tBgX = 0; tBgY = 0; });
 
   // Pulsing drop icon (starts after entrance)
   gsap.to('.drop-icon', { scale: 1.1, duration: 1.7, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.4 });

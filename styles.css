@@ -58,17 +58,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .lp-hero {
   text-align: center; margin-bottom: 44px; position: relative;
   overflow: hidden; padding: 48px 0 52px;
-  background-image: radial-gradient(circle, rgba(46,92,138,0.32) 1.5px, transparent 1.5px);
-  background-size: 28px 28px;
-  background-position: center;
 }
-[data-theme="dark"] .lp-hero {
-  background-image: radial-gradient(circle, rgba(91,155,213,0.28) 1.5px, transparent 1.5px);
-}
-/* Remove old separate dot-grid rules */
-.lp-dot-grid, [data-theme="dark"] .lp-dot-grid { display: none; }
-/* Hero text content above dot grid */
-.lp-hero > *:not(.lp-dot-grid) { position: relative; z-index: 1; }
 
 .lp-hero::before {
   content: '';
@@ -95,11 +85,17 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .drop-zone {
   border: 2px dashed var(--line); border-radius: 16px;
   padding: 56px 32px; text-align: center; cursor: default;
-  background: var(--panel);
-  transition: border-color .2s, background .2s;
+  background-color: var(--panel);
+  background-image: radial-gradient(circle, rgba(46,92,138,0.13) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+  background-position: center;
+  transition: border-color .2s, background-color .2s;
   user-select: none;
 }
-.drop-zone.drag-over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, transparent); }
+[data-theme="dark"] .drop-zone {
+  background-image: radial-gradient(circle, rgba(91,155,213,0.12) 1.5px, transparent 1.5px);
+}
+.drop-zone.drag-over { border-color: var(--accent); background-color: color-mix(in srgb, var(--accent) 5%, transparent); }
 .drop-icon { color: var(--muted); margin-bottom: 18px; }
 .drop-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
 .drop-sub { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
