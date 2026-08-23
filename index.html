@@ -46,7 +46,7 @@
           </svg>
         </div>
         <p class="drop-title">Släpp produktbilder här</p>
-        <p class="drop-sub">JPG, PNG, WebP, AVIF — eller <button class="drop-browse" id="browseBtn">välj filer</button></p>
+        <p class="drop-sub">JPG, PNG, WebP, AVIF — eller <button class="drop-browse" id="browseBtn">välj filer</button><span class="fs-only"> · <button class="drop-browse" id="folderBtn">välj mapp</button></span></p>
         <p class="drop-formats">Bearbetar allt lokalt · Ingen uppladdning</p>
       </div>
       <input type="file" id="fileInput" multiple accept="image/jpeg,image/png,image/webp,image/avif" hidden>
@@ -112,6 +112,10 @@
           <div class="image-grid" id="imageGrid"></div>
           <div class="work-add">
             <button class="btn-secondary" id="addMoreBtn">+ Lägg till fler bilder</button>
+            <button class="btn-secondary fs-only" id="addFolderBtn" style="gap:5px">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              + Lägg till mapp
+            </button>
             <button class="btn-secondary btn-clear" id="clearAllBtn">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
               Rensa alla
@@ -279,7 +283,12 @@
           <div class="sp-footer">
             <button class="btn-primary" id="processBtn">Optimera <span id="processCount"></span></button>
             <div class="sp-footer-row hidden" id="postProcessBtns">
-              <button class="btn-download" id="downloadBtn">Ladda ner ZIP</button>
+              <div class="sp-download-row">
+                <button class="btn-download" id="downloadBtn">Ladda ner ZIP</button>
+                <button class="btn-folder fs-only" id="saveFolderBtn" title="Spara optimerade filer direkt i en mapp">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                </button>
+              </div>
               <label class="zip-name-label" for="zipName">Filnamn</label>
               <input type="text" id="zipName" class="zip-name-input" placeholder="bilder.zip">
               <div class="sp-footer-divider"></div>

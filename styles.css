@@ -527,6 +527,25 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 
 .btn-primary, .btn-download { width: 100%; }
 .sp-footer .btn-secondary { width: 100%; }
+
+/* File System Access API — hidden unless supported */
+.fs-only { display: none; }
+.fs-supported span.fs-only   { display: inline; }
+.fs-supported button.fs-only { display: inline-flex; align-items: center; }
+.fs-supported .btn-folder    { display: flex; }
+
+/* Download row with optional folder button */
+.sp-download-row { display: flex; gap: 6px; }
+.sp-download-row .btn-download { flex: 1; width: auto; }
+.btn-folder {
+  width: 36px; height: 36px; flex-shrink: 0;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--soft); color: var(--muted);
+  display: none; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .15s, color .15s, border-color .15s;
+  padding: 0;
+}
+.btn-folder:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
 .btn-download {
   background: var(--good); color: #fff; border: none; border-radius: 8px;
   padding: 9px 20px; font-size: 13px; font-weight: 600; font-family: var(--sans);

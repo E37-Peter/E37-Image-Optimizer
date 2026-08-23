@@ -65,6 +65,14 @@ function init() {
     card.addEventListener('mouseleave', () => gsap.to(card, { y: 0,  duration: 0.2, ease: 'power2.out' }));
   });
 
+  // File System Access API support
+  if (typeof window.showDirectoryPicker !== 'undefined') {
+    document.body.classList.add('fs-supported');
+    $('folderBtn').onclick    = pickFolder;
+    $('addFolderBtn').onclick = pickFolder;
+    $('saveFolderBtn').onclick = saveToFolder;
+  }
+
   // Theme
   const saved = localStorage.getItem('imgOptTheme');
   if (saved) document.documentElement.setAttribute('data-theme', saved);
@@ -1073,7 +1081,45 @@ async function downloadZip() {
   btn.disabled = false;
 }
 
-// --- Lightbox ---
+async function pickFolder() {
+  try {
+    const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+    const files = [];
+    for await (const entry of dirHandle.values()) {
+      if (entry.kind === 'file' && /\.(jpe?g|png|webp|avif)$/i.test(entry.name)) {
+        files.push(await entry.getFile());
+      }
+    }
+    if (files.length > 0) addFiles(files);
+  } catch (e) {
+    if (e.name !== 'AbortError') console.error('pickFolder:', e);
+  }
+}
+
+async function saveToFolder() {
+  const done = items.filter(i => i.status === 'done' && i.blob);
+  if (!done.length) return;
+  const btn = $('saveFolderBtn');
+  try {
+    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'downloads' });
+    btn.disabled = true;
+    for (const item of done) {
+      const fh = await dirHandle.getFileHandle(item.outName, { create: true });
+      const w = await fh.createWritable();
+      await w.write(item.blob);
+      await w.close();
+    }
+    const origHTML = btn.innerHTML;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+    gsap.fromTo(btn, { scale: 0.88 }, { scale: 1, duration: 0.4, ease: 'elastic.out(1.2,0.5)' });
+    setTimeout(() => { btn.innerHTML = origHTML; btn.disabled = false; }, 2500);
+  } catch (e) {
+    if (e.name !== 'AbortError') console.error('saveToFolder:', e);
+    btn.disabled = false;
+  }
+}
+
+
 let lbUrl = null;
 let lbOrigUrl = null;
 
