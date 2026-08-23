@@ -46,7 +46,17 @@
           </svg>
         </div>
         <p class="drop-title">Släpp produktbilder här</p>
-        <p class="drop-sub">JPG, PNG, WebP, AVIF — eller <button class="drop-browse" id="browseBtn">välj filer</button><span class="fs-only"> · <button class="drop-browse" id="folderBtn">välj mapp</button></span></p>
+        <div class="drop-actions">
+          <button class="drop-btn" id="browseBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+            Välj filer
+          </button>
+          <button class="drop-btn fs-only" id="folderBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Välj mapp
+          </button>
+        </div>
+        <p class="drop-sub">JPG · PNG · WebP · AVIF</p>
         <p class="drop-formats">Bearbetar allt lokalt · Ingen uppladdning</p>
       </div>
       <input type="file" id="fileInput" multiple accept="image/jpeg,image/png,image/webp,image/avif" hidden>

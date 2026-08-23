@@ -92,11 +92,18 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 }
 .drop-zone.drag-over { border-color: var(--accent); background: rgba(46,92,138,0.05); background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .drop-icon { color: var(--muted); margin-bottom: 18px; }
-.drop-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-.drop-sub { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
+.drop-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+.drop-actions { display: flex; gap: 8px; justify-content: center; margin-bottom: 14px; }
+.drop-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 18px; border: 1px solid var(--line2); border-radius: 8px;
+  background: transparent; font-size: 13px; font-weight: 500;
+  font-family: var(--sans); color: var(--text); cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.drop-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(46,92,138,0.05); background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.drop-sub { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
 .drop-formats { font-size: 12px; color: var(--muted); opacity: .7; }
-.drop-browse { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 14px; text-decoration: underline; font-family: inherit; }
-.drop-browse:hover { color: var(--accent-h); }
 
 /* Format badges */
 .lp-format-badges { display: flex; gap: 6px; justify-content: center; margin-top: 14px; }
@@ -530,9 +537,9 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 
 /* File System Access API — hidden unless supported */
 .fs-only { display: none; }
-.fs-supported span.fs-only   { display: inline; }
-.fs-supported button.fs-only { display: inline-flex; align-items: center; }
-.fs-supported .btn-folder    { display: flex; }
+.fs-supported span.fs-only    { display: inline; }
+.fs-supported button.fs-only  { display: inline-flex; align-items: center; gap: 6px; }
+.fs-supported .btn-folder     { display: flex; }
 
 /* Download row with optional folder button */
 .sp-download-row { display: flex; gap: 6px; }
