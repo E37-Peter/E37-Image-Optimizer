@@ -102,6 +102,8 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
   transition: border-color .15s, background .15s, color .15s;
 }
 .drop-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(46,92,138,0.05); background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.drop-btn.drop-btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.drop-btn.drop-btn-primary:hover { background: var(--accent-h); border-color: var(--accent-h); color: #fff; }
 .drop-sub { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
 .drop-formats { font-size: 12px; color: var(--muted); opacity: .7; }
 
