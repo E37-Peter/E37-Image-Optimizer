@@ -147,7 +147,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .work-area { height: calc(100vh - 56px); display: flex; flex-direction: column; overflow: hidden; }
 .work-layout { display: flex; flex: 1; overflow: hidden; }
 .work-main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
-.work-add { padding: 0 24px 24px; display: flex; gap: 8px; }
+.work-add { padding: 0 24px 24px; display: flex; gap: 8px; position: relative; z-index: 2; }
 
 /* ── Work toolbar ── */
 .work-toolbar {
