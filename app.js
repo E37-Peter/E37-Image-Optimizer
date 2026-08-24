@@ -576,6 +576,8 @@ function addFiles(files) {
   updateProcessBtn();
   updatePngWarn();
   updateDuplicateWarnings();
+  const n = imgs.length;
+  showToast(n === 1 ? '1 bild tillagd' : `${n} bilder tillagda`);
 }
 
 function updateDuplicateWarnings() {
@@ -1066,6 +1068,24 @@ function applyFilters() {
   });
 }
 
+function showToast(msg, type = 'success') {
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  gsap.fromTo(toast, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.22, ease: 'power2.out' });
+  setTimeout(() => {
+    gsap.to(toast, { opacity: 0, y: -6, duration: 0.28, ease: 'power2.in',
+      onComplete: () => toast.remove() });
+  }, 3200);
+}
+
 function updateSummary() {
   const done = items.filter(i => i.status === 'done');
   const errors = items.filter(i => i.status === 'error');
@@ -1126,8 +1146,10 @@ async function downloadZip() {
   btn.textContent = 'Skapar ZIP…';
   btn.disabled = true;
 
+  const doneItems = items.filter(i => i.status === 'done');
+  const count = doneItems.length;
   const zip = new JSZip();
-  items.filter(i => i.status === 'done').forEach(item => zip.file(item.outName, item.blob));
+  doneItems.forEach(item => zip.file(item.outName, item.blob));
 
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
   const url = URL.createObjectURL(blob);
@@ -1140,6 +1162,7 @@ async function downloadZip() {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(`ZIP nedladdad — ${count} ${count === 1 ? 'fil' : 'filer'}`);
 
   btn.textContent = 'Ladda ner ZIP';
   btn.disabled = false;
@@ -1155,6 +1178,7 @@ async function pickFolder() {
       }
     }
     if (files.length > 0) addFiles(files);
+    else showToast('Inga bildfiler hittades i mappen', 'error');
   } catch (e) {
     if (e.name !== 'AbortError') console.error('pickFolder:', e);
   }
@@ -1176,6 +1200,7 @@ async function saveToFolder() {
     const origHTML = btn.innerHTML;
     btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
     gsap.fromTo(btn, { scale: 0.88 }, { scale: 1, duration: 0.4, ease: 'elastic.out(1.2,0.5)' });
+    showToast(`${done.length} ${done.length === 1 ? 'fil sparad' : 'filer sparade'} till mapp`);
     setTimeout(() => { btn.innerHTML = origHTML; btn.disabled = false; }, 2500);
   } catch (e) {
     if (e.name !== 'AbortError') console.error('saveToFolder:', e);
