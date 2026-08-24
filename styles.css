@@ -53,7 +53,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .theme-btn:hover { background: rgba(255,255,255,.15); color: #fff; }
 
 /* ── Landing ── */
-.landing { max-width: 760px; margin: 0 auto; padding: 44px 24px 64px; }
+.landing { max-width: 760px; margin: 0 auto; padding: 0 24px 64px; }
 
 .lp-hero {
   text-align: center; margin-bottom: 36px; position: relative;
