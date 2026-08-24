@@ -26,6 +26,8 @@ function saveSettings() {
 const $ = id => document.getElementById(id);
 
 function init() {
+  history.scrollRestoration = 'manual';
+  window.scrollTo(0, 0);
   // Browser compatibility check
   (function checkBrowserSupport() {
     const missing = [];
