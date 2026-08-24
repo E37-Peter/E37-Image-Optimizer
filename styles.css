@@ -573,7 +573,8 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
   box-shadow: 0 4px 20px rgba(0,0,0,.15);
   pointer-events: auto; white-space: nowrap;
 }
-.toast-success { background: var(--good); color: #fff; }
+.toast-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+[data-theme="dark"] .toast-success { background: #052e16; color: #86efac; border-color: #166534; }
 .toast-error { background: var(--bad); color: #fff; }
 .toast-info { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
 @media (max-width: 900px) {
