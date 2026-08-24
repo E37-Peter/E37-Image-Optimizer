@@ -753,10 +753,14 @@ async function processAll() {
   processing = false;
   const doneCount = items.filter(i => i.status === 'done').length;
   const cs = $('processCount'); if (cs) cs.textContent = '';
-  $('processBtn').firstChild.textContent = `✓ ${doneCount} bilder klara! `;
-  gsap.fromTo($('processBtn'), { scale: 0.97 }, { scale: 1, duration: 0.4, ease: 'elastic.out(1, 0.4)' });
+  const btn = $('processBtn');
+  btn.firstChild.textContent = `✓ ${doneCount} bilder klara! `;
+  gsap.fromTo(btn, { scale: 0.95 }, { scale: 1, duration: 0.5, ease: 'elastic.out(1, 0.35)' });
+  gsap.to(btn, { background: 'var(--good)', duration: 0.25, ease: 'power2.out' });
   setTimeout(() => {
-    $('processBtn').firstChild.textContent = 'Optimera igen ';
+    gsap.to(btn, { background: '', duration: 0.4, ease: 'power2.inOut',
+      onComplete: () => btn.style.removeProperty('background') });
+    btn.firstChild.textContent = 'Optimera igen ';
     updateProcessBtn();
   }, 2500);
   updateSummary();
