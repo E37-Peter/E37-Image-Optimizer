@@ -146,8 +146,56 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 /* ── Work layout ── */
 .work-area { height: calc(100vh - 56px); display: flex; flex-direction: column; overflow: hidden; }
 .work-layout { display: flex; flex: 1; overflow: hidden; }
-.work-main { flex: 1; overflow-y: auto; }
+.work-main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
 .work-add { padding: 0 24px 24px; display: flex; gap: 8px; }
+
+/* ── Work toolbar ── */
+.work-toolbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 24px; border-bottom: 1px solid var(--line);
+  background: var(--bg); flex-shrink: 0; position: sticky; top: 0; z-index: 5;
+}
+.wt-search { position: relative; display: flex; align-items: center; width: 180px; flex-shrink: 0; }
+.wt-search-icon { position: absolute; left: 8px; color: var(--muted); pointer-events: none; }
+.wt-search input {
+  width: 100%; padding: 5px 8px 5px 28px;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--panel); color: var(--text); font-size: 13px; outline: none;
+  transition: border-color .15s;
+}
+.wt-search input:focus { border-color: var(--accent); }
+.wt-filters { display: flex; gap: 4px; flex: 1; }
+.wt-filter {
+  padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500;
+  border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.wt-filter.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.wt-filter:hover:not(.active) { color: var(--text); border-color: var(--muted); }
+.wt-views { display: flex; gap: 3px; }
+.wt-view-btn {
+  width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--line);
+  background: none; color: var(--muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: color .15s, background .15s;
+}
+.wt-view-btn.active { background: var(--soft); color: var(--text); }
+.wt-view-btn:hover:not(.active) { color: var(--text); }
+
+/* ── List view ── */
+.image-grid.list-view { grid-template-columns: 1fr; gap: 6px; padding: 16px 24px; }
+.list-view .img-card { display: flex; flex-direction: row; align-items: center; min-height: 58px; }
+.list-view .card-thumb { width: 58px; height: 58px; aspect-ratio: 1 !important; flex-shrink: 0; border-radius: var(--radius) 0 0 var(--radius); }
+.list-view .card-body { flex: 1; display: flex; flex-direction: row; align-items: center; gap: 12px; padding: 0 14px; min-width: 0; }
+.list-view .card-name { flex: 1; margin-bottom: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list-view .card-meta { flex-shrink: 0; margin-bottom: 0; white-space: nowrap; }
+.list-view .card-status { flex-shrink: 0; }
+.list-view .card-dl { margin: 0; flex-shrink: 0; }
+.list-view .card-lowres, .list-view .card-propratio, .list-view .card-dupwarn { display: none; }
+.list-view .card-drag-handle { top: 50%; transform: translateY(-50%); left: auto; right: 6px; }
+
+/* Filter hidden */
+.img-card.wt-hidden { display: none !important; }
 
 /* ── Settings panel ── */
 .sp {

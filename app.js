@@ -14,6 +14,9 @@ let autoCrop = false;
 let sizeMode = false;
 let targetKB = 300;
 let padding = 0;
+let viewMode = 'grid';
+let filterStatus = 'all';
+let searchQuery = '';
 
 function saveSettings() {
   localStorage.setItem('imgOptSettings', JSON.stringify({
@@ -108,6 +111,40 @@ function init() {
   $('browseBtn').onclick = () => $('fileInput').click();
   $('fileInput').onchange = e => { addFiles(e.target.files); e.target.value = ''; };
   $('addMoreBtn').onclick = () => $('fileInput').click();
+
+  // Toolbar: search
+  $('searchInput').addEventListener('input', e => {
+    searchQuery = e.target.value.trim();
+    applyFilters();
+  });
+
+  // Toolbar: filter pills
+  document.querySelectorAll('.wt-filter').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.wt-filter').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filterStatus = btn.dataset.filter;
+      applyFilters();
+    };
+  });
+
+  // Toolbar: view toggle
+  $('viewGrid').onclick = () => {
+    viewMode = 'grid';
+    $('imageGrid').classList.remove('list-view');
+    $('viewGrid').classList.add('active');
+    $('viewList').classList.remove('active');
+    localStorage.setItem('imgOptView', 'grid');
+  };
+  $('viewList').onclick = () => {
+    viewMode = 'list';
+    $('imageGrid').classList.add('list-view');
+    $('viewList').classList.add('active');
+    $('viewGrid').classList.remove('active');
+    localStorage.setItem('imgOptView', 'list');
+  };
+  const savedView = localStorage.getItem('imgOptView');
+  if (savedView === 'list') $('viewList').click();
 
   // Ratio cards
   $('ratioPills').querySelectorAll('[data-ratio]').forEach(btn => {
@@ -599,7 +636,7 @@ function appendCard(item) {
   card.onclick = () => openPreview(item.id);
 
   card.addEventListener('mouseenter', () => {
-    if (!card.classList.contains('dragging'))
+    if (!card.classList.contains('dragging') && viewMode === 'grid')
       gsap.to(card, { y: -4, duration: 0.2, ease: 'power2.out' });
   });
   card.addEventListener('mouseleave', () => {
@@ -812,6 +849,7 @@ function finalizeCard(item, blob, cw, ch, ext) {
   }
   const cardEl = $('card-' + item.id);
   if (cardEl) gsap.fromTo(cardEl, { scale: 1.04 }, { scale: 1, duration: 0.22, ease: 'power2.out' });
+  applyFilters();
 }
 
 async function processItemWorker(item, settings, ext) {
@@ -1002,6 +1040,26 @@ function setStatus(id, cls, text) {
       onComplete: () => gsap.set(card, { x: 0 })
     });
   }
+  applyFilters();
+}
+
+function applyFilters() {
+  const q = searchQuery.toLowerCase();
+  $('imageGrid').querySelectorAll('.img-card').forEach(card => {
+    const id = parseInt(card.id.replace('card-', ''), 10);
+    const item = items.find(i => i.id === id);
+    const name = (item ? (item.outName || item.name) : card.querySelector('.card-name')?.textContent || '').toLowerCase();
+    const matchSearch = !q || name.includes(q);
+    const isDone = card.classList.contains('done');
+    const isError = card.classList.contains('error');
+    const isPending = !isDone && !isError;
+    const matchFilter =
+      filterStatus === 'all' ||
+      (filterStatus === 'done' && isDone) ||
+      (filterStatus === 'error' && isError) ||
+      (filterStatus === 'pending' && isPending);
+    card.classList.toggle('wt-hidden', !(matchSearch && matchFilter));
+  });
 }
 
 function updateSummary() {
