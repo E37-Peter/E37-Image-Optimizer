@@ -180,9 +180,13 @@ function init() {
     updateSizeUnit();
   };
 
-  // Custom dims
+  // Custom dims — leaving height blank means "auto": keep each image's own
+  // aspect ratio instead of forcing one fixed height for the whole batch.
   $('customW').oninput = e => { customW = Math.max(100, parseInt(e.target.value) || 1000); };
-  $('customH').oninput = e => { customH = Math.max(100, parseInt(e.target.value) || 1000); };
+  $('customH').oninput = e => {
+    const v = e.target.value.trim();
+    customH = v === '' ? null : Math.max(100, parseInt(v) || 1000);
+  };
 
   // Format pills
   const setFormat = (fmt) => {
@@ -314,6 +318,7 @@ function init() {
   grid.addEventListener('click', e => {
     const btn = e.target.closest('.card-action-btn');
     if (!btn) return;
+    e.stopPropagation(); // prevent the click from also bubbling to card.onclick and opening the lightbox
     const id = parseInt(btn.dataset.id);
     const item = items.find(i => i.id === id);
     if (!item) return;
@@ -413,7 +418,10 @@ function init() {
         $('customDimsGroup').classList.toggle('hidden', s.ratio !== 'custom');
       }
       if (s.customW) { customW = s.customW; $('customW').value = s.customW; }
-      if (s.customH) { customH = s.customH; $('customH').value = s.customH; }
+      if ('customH' in s) {
+        customH = s.customH;
+        $('customH').value = customH == null ? '' : customH;
+      }
       if (s.targetSize) {
         targetSize = s.targetSize;
         $('sizeCustom').value = s.targetSize;
@@ -469,8 +477,12 @@ function init() {
   $('rmCancel').onclick = closeRenameModal;
   $('rmSave').onclick = saveRenameModal;
   $('rmOverlay').addEventListener('click', e => { if (e.target === $('rmOverlay')) closeRenameModal(); });
+  $('metaClose').onclick = closeMetaPanel;
+  $('metaCloseBtn').onclick = closeMetaPanel;
+  $('metaOverlay').addEventListener('click', e => { if (e.target === $('metaOverlay')) closeMetaPanel(); });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !$('rmOverlay').classList.contains('hidden')) closeRenameModal();
+    if (e.key === 'Escape' && !$('metaOverlay').classList.contains('hidden')) closeMetaPanel();
     if (e.ctrlKey && e.key === 'Enter' && !$('workArea').classList.contains('hidden') && !processing) $('processBtn').click();
   });
 
@@ -618,6 +630,10 @@ function appendCard(item) {
           <circle cx="2" cy="12" r="1.5"/><circle cx="8" cy="12" r="1.5"/>
         </svg>
       </div>
+      <button class="card-exif-badge hidden" data-id="${item.id}" title="EXIF-orientering upptäckt – klicka för information">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        EXIF
+      </button>
       <div class="card-actions">
         <button class="card-action-btn" data-action="rotate" data-id="${item.id}" title="Rotera 90°">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -634,8 +650,13 @@ function appendCard(item) {
     </div>`;
   $('imageGrid').appendChild(card);
 
+  card.querySelector('.card-exif-badge').onclick = e => { e.stopPropagation(); openMetaPanel(item.id); };
+
   card.style.cursor = 'pointer';
-  card.onclick = () => openPreview(item.id);
+  card.onclick = e => {
+    if (e.target.closest('.card-actions, .card-exif-badge')) return;
+    openPreview(item.id);
+  };
 
   card.addEventListener('mouseenter', () => {
     if (!card.classList.contains('dragging') && viewMode === 'grid')
@@ -652,7 +673,7 @@ function appendCard(item) {
     const el = $('meta-' + item.id);
     if (el) el.textContent = item.originalW + '\xD7' + item.originalH + ' \xB7 ' + formatBytes(item.originalSize);
     URL.revokeObjectURL(url);
-    const [cw, ch] = getCanvasDims(targetSize);
+    const [cw, ch] = getCanvasDims(targetSize, item);
     const scale = Math.min(cw / item.originalW, ch / item.originalH);
     const body = card.querySelector('.card-body');
     if (scale > 1.5) {
@@ -670,11 +691,128 @@ function appendCard(item) {
       body.appendChild(p);
     }
   };
+
+  // Detect EXIF orientation up front and flag it on the card, since this is
+  // exactly the kind of metadata mismatch (e.g. Orientation = 3) that can
+  // make an image look correct in the OS/desktop viewer but end up rotated
+  // after being uploaded elsewhere if not normalized consistently.
+  if (typeof exifr !== 'undefined') {
+    exifr.orientation(item.file).then(o => {
+      item.exifOrientation = o || 1;
+      updateExifBadge(item);
+    }).catch(() => { item.exifOrientation = 1; });
+  } else {
+    item.exifOrientation = 1;
+  }
 }
 
-function getCanvasDims(size) {
+function updateExifBadge(item) {
+  const badge = document.querySelector('#card-' + item.id + ' .card-exif-badge');
+  if (!badge) return;
+  badge.classList.toggle('hidden', !item.exifOrientation || item.exifOrientation === 1);
+  badge.classList.toggle('badge-ignored', !!item.ignoreExifOrientation);
+  badge.title = item.ignoreExifOrientation
+    ? 'EXIF-orientering ignoreras för den här bilden – klicka för information'
+    : 'EXIF-orientering upptäckt – normaliseras automatiskt. Klicka för information';
+}
+
+function describeExifOrientation(o) {
+  switch (o) {
+    case 1: return 'Normal – ingen åtgärd behövs';
+    case 2: return 'Speglad horisontellt';
+    case 3: return 'Roterad 180°';
+    case 4: return 'Speglad vertikalt';
+    case 5: return 'Speglad + roterad 90° moturs';
+    case 6: return 'Roterad 90° medurs';
+    case 7: return 'Speglad + roterad 90° medurs';
+    case 8: return 'Roterad 90° moturs';
+    default: return 'Ingen EXIF-orientering hittad';
+  }
+}
+
+function openMetaPanel(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+
+  const body = $('metaBody');
+  body.innerHTML = '';
+
+  const addRow = (label, value) => {
+    const row = document.createElement('div');
+    row.className = 'meta-row';
+    row.innerHTML = `<span class="meta-label">${esc(label)}</span><span class="meta-value">${value}</span>`;
+    body.appendChild(row);
+  };
+
+  addRow('Filnamn', esc(item.name));
+  addRow('Dimensioner', item.originalW && item.originalH ? item.originalW + '×' + item.originalH + ' px' : '\u2013');
+  addRow('Filstorlek', formatBytes(item.originalSize));
+  addRow('EXIF-orientering', esc(describeExifOrientation(item.exifOrientation)));
+
+  if (item.exifOrientation && item.exifOrientation !== 1) {
+    const box = document.createElement('div');
+    box.className = 'meta-orient-box';
+    box.innerHTML = `
+      <p class="meta-orient-hint">Bilden normaliseras automatiskt till rätt visningsriktning vid optimering.</p>
+      <label class="meta-orient-toggle">
+        <input type="checkbox" id="metaIgnoreOrient" ${item.ignoreExifOrientation ? 'checked' : ''}>
+        Ignorera EXIF-orientering (behåll bilden orörd, som den ligger lagrad)
+      </label>`;
+    body.appendChild(box);
+
+    const toggle = box.querySelector('#metaIgnoreOrient');
+    toggle.onchange = () => {
+      item.ignoreExifOrientation = toggle.checked;
+      if (item.status === 'done') {
+        item.status = 'pending';
+        item.blob = null;
+        setStatus(item.id, 'pending', 'Väntar');
+        const cardEl = $('card-' + item.id);
+        cardEl?.classList.remove('done', 'processing', 'error');
+        cardEl?.classList.add('img-card');
+      }
+      updateExifBadge(item);
+    };
+  }
+
+  const camRow = document.createElement('div');
+  camRow.className = 'meta-row hidden';
+  camRow.innerHTML = `<span class="meta-label">Kamera</span><span class="meta-value" id="metaCameraValue"></span>`;
+  body.appendChild(camRow);
+  if (typeof exifr !== 'undefined') {
+    exifr.parse(item.file, ['Make', 'Model', 'FNumber', 'ExposureTime', 'ISOSpeedRatings', 'FocalLength']).then(exif => {
+      if (!exif) return;
+      const parts = [];
+      if (exif.Make || exif.Model) parts.push([exif.Make, exif.Model].filter(Boolean).join(' '));
+      if (exif.FocalLength) parts.push(Math.round(exif.FocalLength) + ' mm');
+      if (exif.FNumber) parts.push('f/' + exif.FNumber);
+      if (exif.ExposureTime) parts.push(exif.ExposureTime < 1 ? '1/' + Math.round(1 / exif.ExposureTime) + 's' : exif.ExposureTime + 's');
+      if (exif.ISOSpeedRatings) parts.push('ISO ' + exif.ISOSpeedRatings);
+      if (parts.length) {
+        camRow.classList.remove('hidden');
+        $('metaCameraValue').textContent = parts.join(' · ');
+      }
+    }).catch(() => {});
+  }
+
+  $('metaOverlay').classList.remove('hidden');
+}
+
+function closeMetaPanel() {
+  $('metaOverlay').classList.add('hidden');
+}
+
+function getCanvasDims(size, item) {
   if (ratio === '1:1') return [size, size];
   if (ratio === '4:5') return [size, Math.round(size * 5 / 4)];
+  if (customH == null) {
+    // "Auto": keep this specific image's own aspect ratio instead of a
+    // shared fixed height, so the user only has to set the width.
+    if (item && item.originalW && item.originalH) {
+      return [customW, Math.round(customW * item.originalH / item.originalW)];
+    }
+    return [customW, customW]; // fallback until the image's own dimensions are known
+  }
   return [customW, customH];
 }
 
@@ -830,7 +968,10 @@ function finalizeCard(item, blob, cw, ch, ext) {
   if (card) {
     card.className = 'img-card done';
     card.style.cursor = 'pointer';
-    card.onclick = () => openPreview(item.id);
+    card.onclick = e => {
+      if (e.target.closest('.card-actions, .card-exif-badge')) return;
+      openPreview(item.id);
+    };
     card.querySelector('.card-dl')?.remove();
     const dlBtn = document.createElement('a');
     dlBtn.className = 'card-dl';
@@ -874,7 +1015,7 @@ async function processItemWorker(item, settings, ext) {
         id: item.id,
         buffer,
         mimeType: item.file.type,
-        settings: { ...settings, rotation: item.rotation || 0 }
+        settings: { ...settings, rotation: item.rotation || 0, ignoreExifOrientation: !!item.ignoreExifOrientation }
       }, [buffer]);
     });
 
@@ -907,6 +1048,11 @@ function findQuality(toBlobFn, targetBytes) {
 }
 
 function processItem(item, size, fmt, q, ext) {
+  // Note: this main-thread fallback (used when Web Workers/OffscreenCanvas are
+  // unavailable) always draws via an <img> element, which browsers always
+  // auto-rotate per EXIF orientation with no opt-out. The "ignorera
+  // EXIF-orientering" toggle in the metadata panel therefore only has an
+  // effect on the normal Web Worker path.
   return new Promise(resolve => {
     setStatus(item.id, 'processing', 'Bearbetar…');
     const card = $('card-' + item.id);
@@ -917,7 +1063,10 @@ function processItem(item, size, fmt, q, ext) {
 
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const [cw, ch] = getCanvasDims(size);
+      const [cw, ch] = getCanvasDims(size, {
+        originalW: item.originalW || img.naturalWidth,
+        originalH: item.originalH || img.naturalHeight
+      });
       const canvas = document.createElement('canvas');
       canvas.width = cw;
       canvas.height = ch;

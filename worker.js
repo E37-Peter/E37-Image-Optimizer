@@ -54,16 +54,29 @@ async function findQuality(canvas, fmt, targetBytes) {
 
 self.onmessage = async function(e) {
   const { id, buffer, mimeType, settings } = e.data;
-  const { size, ratio, customW, customH, fmt, quality, noUpscale, bgColor, sharpness, autoCrop, rotation, padding } = settings;
+  const { size, ratio, customW, customH, fmt, quality, noUpscale, bgColor, sharpness, autoCrop, rotation, padding, ignoreExifOrientation } = settings;
 
   try {
     const blob = new Blob([buffer], { type: mimeType });
-    const bitmap = await createImageBitmap(blob);
+    // Explicitly normalize EXIF orientation (e.g. Orientation=3 on a JPEG from
+    // certain phones/scanners) instead of relying on the browser's default,
+    // which historically ignored EXIF orientation in createImageBitmap and
+    // only started honoring it consistently in newer browser versions.
+    // Without this, images can end up upside-down/mirrored after processing
+    // even though they look correct in the OS file viewer or in an <img> tag.
+    // A user can opt out per image (ignoreExifOrientation) via the metadata
+    // panel, in which case the raw pixel data is used as-is.
+    const bitmap = await createImageBitmap(blob, { imageOrientation: ignoreExifOrientation ? 'none' : 'from-image' });
 
     let cw, ch;
     if (ratio === '1:1') { cw = size; ch = size; }
     else if (ratio === '4:5') { cw = size; ch = Math.round(size * 5 / 4); }
-    else { cw = customW; ch = customH; }
+    else {
+      cw = customW;
+      // customH === null/undefined means "auto": keep this image's own aspect
+      // ratio instead of forcing a fixed height shared across the whole batch.
+      ch = (customH != null) ? customH : Math.round(customW * bitmap.height / bitmap.width);
+    }
 
     let srcX = 0, srcY = 0, srcW = bitmap.width, srcH = bitmap.height;
     if (autoCrop) {

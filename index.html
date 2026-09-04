@@ -196,9 +196,9 @@
               <div class="custom-dims">
                 <input type="number" id="customW" value="1000" min="100" max="8000" step="10">
                 <span class="dims-x">×</span>
-                <input type="number" id="customH" value="1000" min="100" max="8000" step="10">
+                <input type="number" id="customH" value="1000" min="100" max="8000" step="10" placeholder="Auto">
               </div>
-              <span class="sp-unit">bredd × höjd (pixlar)</span>
+              <span class="sp-unit">bredd × höjd (pixlar) — lämna höjden tom för att bevara varje bilds egna proportioner</span>
             </div>
 
             <div class="sp-group">
@@ -392,6 +392,20 @@
       <div class="rm-footer">
         <button class="btn-secondary" id="rmCancel">Avbryt</button>
         <button class="btn-primary" id="rmSave">Spara namn</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metadata modal -->
+  <div class="meta-overlay hidden" id="metaOverlay">
+    <div class="meta-modal">
+      <div class="meta-header">
+        <span class="meta-title">Bildinformation</span>
+        <button class="meta-close" id="metaClose">&#x2715;</button>
+      </div>
+      <div class="meta-body" id="metaBody"></div>
+      <div class="meta-footer">
+        <button class="btn-secondary" id="metaCloseBtn">Stäng</button>
       </div>
     </div>
   </div>
