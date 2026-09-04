@@ -17,6 +17,7 @@ let padding = 0;
 let viewMode = 'grid';
 let filterStatus = 'all';
 let searchQuery = '';
+let undoStack = [];
 
 function saveSettings() {
   localStorage.setItem('imgOptSettings', JSON.stringify({
@@ -287,6 +288,17 @@ function init() {
     if (e.key === 'ArrowRight' && $('lbNext').style.visibility !== 'hidden') $('lbNext').click();
   });
 
+  // Undo
+  $('undoBtn').onclick = undoLast;
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      const inField = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+      if (inField) return;
+      e.preventDefault();
+      undoLast();
+    }
+  });
+
   // Background color swatches
   document.querySelectorAll('.bg-swatch').forEach(btn => {
     btn.onclick = () => {
@@ -325,6 +337,7 @@ function init() {
     if (btn.dataset.action === 'crop') {
       openCropModal(item);
     } else if (btn.dataset.action === 'rotate') {
+      pushUndo({ action: 'rotate', itemId: item.id, itemName: item.outName || item.name, prevRotation: item.rotation || 0 });
       item.rotation = ((item.rotation || 0) + 90) % 360;
       const img = $('card-' + id)?.querySelector('img');
       if (img) img.style.transform = item.rotation ? `rotate(${item.rotation}deg)` : '';
@@ -336,7 +349,9 @@ function init() {
       $('card-' + id)?.classList.add('img-card');
     } else if (btn.dataset.action === 'remove') {
       const cardEl = $('card-' + id);
-      items.splice(items.indexOf(item), 1);
+      const idx = items.indexOf(item);
+      pushUndo({ action: 'remove', item, index: idx, itemName: item.outName || item.name });
+      items.splice(idx, 1);
       const goToLanding = items.length === 0;
       const afterRemove = () => {
         updateProcessBtn();
@@ -599,6 +614,73 @@ function addFiles(files) {
   updateDuplicateWarnings();
   const n = imgs.length;
   showToast(n === 1 ? '1 bild tillagd' : `${n} bilder tillagda`);
+}
+
+function pushUndo(step) {
+  undoStack.push(step);
+  if (undoStack.length > 30) undoStack.shift();
+  updateUndoBtn();
+}
+
+function updateUndoBtn() {
+  const btn = $('undoBtn');
+  if (!btn) return;
+  btn.disabled = undoStack.length === 0;
+  const step = undoStack[undoStack.length - 1];
+  const labels = { rotate: 'rotation', crop: 'beskärning', remove: 'borttagning' };
+  btn.title = step ? `Ångra: ${labels[step.action] || step.action} av ${trimName(step.itemName || '')}` : 'Ångra';
+}
+
+function markPendingAfterEdit(item) {
+  if (item.status === 'done') {
+    item.status = 'pending';
+    item.blob = null;
+    const statusEl = $('status-' + item.id);
+    if (statusEl) { statusEl.className = 'card-status pending'; statusEl.textContent = 'Väntar'; }
+    const cardEl = $('card-' + item.id);
+    cardEl?.classList.remove('done', 'processing', 'error');
+    cardEl?.classList.add('img-card');
+  }
+}
+
+function undoLast() {
+  const step = undoStack.pop();
+  updateUndoBtn();
+  if (!step) return;
+
+  if (step.action === 'rotate') {
+    const item = items.find(i => i.id === step.itemId);
+    if (!item) return;
+    item.rotation = step.prevRotation;
+    const img = $('card-' + item.id)?.querySelector('.card-thumb img');
+    if (img) img.style.transform = item.rotation ? `rotate(${item.rotation}deg)` : '';
+    markPendingAfterEdit(item);
+  } else if (step.action === 'crop') {
+    const item = items.find(i => i.id === step.itemId);
+    if (!item) return;
+    item.manualCrop = step.prevManualCrop;
+    const badge = document.querySelector('#card-' + item.id + ' .card-crop-badge');
+    if (badge) badge.classList.toggle('hidden', !item.manualCrop);
+    markPendingAfterEdit(item);
+  } else if (step.action === 'remove') {
+    const wasEmpty = items.length === 0;
+    items.splice(step.index, 0, step.item);
+    appendCard(step.item);
+    const cardEl = $('card-' + step.item.id);
+    const gridEl = $('imageGrid');
+    if (cardEl && gridEl) {
+      const ref = gridEl.children[step.index];
+      if (ref && ref !== cardEl) gridEl.insertBefore(cardEl, ref);
+      gsap.from(cardEl, { opacity: 0, scale: 0.9, duration: 0.25, ease: 'power2.out' });
+    }
+    updateProcessBtn();
+    updateDuplicateWarnings();
+    if (wasEmpty) {
+      $('landing').classList.add('hidden');
+      $('workArea').classList.remove('hidden');
+    }
+  }
+  showToast('Ångrat');
 }
 
 function updateDuplicateWarnings() {
@@ -930,7 +1012,13 @@ function applyCropModal() {
   if (!cropItem) return;
   const isFullFrame = cropState.x <= 0.001 && cropState.y <= 0.001 &&
     cropState.w >= 0.999 && cropState.h >= 0.999;
-  cropItem.manualCrop = isFullFrame ? null : { ...cropState };
+  const newCrop = isFullFrame ? null : { ...cropState };
+  const prevCrop = cropItem.manualCrop ? { ...cropItem.manualCrop } : null;
+  const unchanged = JSON.stringify(prevCrop) === JSON.stringify(newCrop);
+  if (!unchanged) {
+    pushUndo({ action: 'crop', itemId: cropItem.id, itemName: cropItem.outName || cropItem.name, prevManualCrop: prevCrop });
+  }
+  cropItem.manualCrop = newCrop;
   const badge = document.querySelector('#card-' + cropItem.id + ' .card-crop-badge');
   if (badge) badge.classList.toggle('hidden', !cropItem.manualCrop);
   if (cropItem.status === 'done') {
@@ -1433,6 +1521,8 @@ function clearAll() {
   if (!items.length) return;
   const cards = [...$('imageGrid').querySelectorAll('.img-card')];
   items = [];
+  undoStack = [];
+  updateUndoBtn();
   const stagger = Math.min(0.06, 0.5 / cards.length);
   const totalDuration = (cards.length - 1) * stagger + 0.25;
 

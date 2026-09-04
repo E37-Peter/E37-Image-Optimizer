@@ -172,6 +172,14 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 }
 .wt-filter.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .wt-filter:hover:not(.active) { color: var(--text); border-color: var(--muted); }
+.wt-undo-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500;
+  border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s, opacity .15s;
+}
+.wt-undo-btn:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
+.wt-undo-btn:disabled { opacity: .4; cursor: default; }
 .wt-views { display: flex; gap: 3px; }
 .wt-view-btn {
   width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--line);
