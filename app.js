@@ -2,8 +2,8 @@ let targetSize = 1500;
 let outputFormat = 'image/jpeg';
 let quality = 0.85;
 let ratio = '1:1';
-let customW = 1000;
-let customH = 1000;
+let customW = null;
+let customH = null;
 let items = [];
 let idCounter = 0;
 let processing = false;
@@ -183,7 +183,10 @@ function init() {
 
   // Custom dims — leaving height blank means "auto": keep each image's own
   // aspect ratio instead of forcing one fixed height for the whole batch.
-  $('customW').oninput = e => { customW = Math.max(100, parseInt(e.target.value) || 1000); };
+  $('customW').oninput = e => {
+    const v = e.target.value.trim();
+    customW = v === '' ? null : Math.max(100, parseInt(v) || 1000);
+  };
   $('customH').oninput = e => {
     const v = e.target.value.trim();
     customH = v === '' ? null : Math.max(100, parseInt(v) || 1000);
@@ -434,7 +437,10 @@ function init() {
         $('sizeGroup').classList.toggle('hidden', s.ratio === 'custom');
         $('customDimsGroup').classList.toggle('hidden', s.ratio !== 'custom');
       }
-      if (s.customW) { customW = s.customW; $('customW').value = s.customW; }
+      if ('customW' in s) {
+        customW = s.customW;
+        $('customW').value = customW == null ? '' : customW;
+      }
       if ('customH' in s) {
         customH = s.customH;
         $('customH').value = customH == null ? '' : customH;
@@ -1041,12 +1047,22 @@ function resetCropModal() {
 function getCanvasDims(size, item) {
   if (ratio === '1:1') return [size, size];
   if (ratio === '4:5') return [size, Math.round(size * 5 / 4)];
+  // Custom ratio: any dimension left blank ("auto") keeps this specific
+  // image's own aspect ratio for that axis, instead of a shared fixed value.
+  // Leaving both blank keeps the image at its own (possibly cropped) size —
+  // useful when the user only wants to crop/normalize metadata without
+  // resizing at all.
+  const hasOrig = item && item.originalW && item.originalH;
+  if (customW == null && customH == null) {
+    if (hasOrig) return [item.originalW, item.originalH];
+    return [size, size]; // fallback until the image's own dimensions are known
+  }
+  if (customW == null) {
+    if (hasOrig) return [Math.round(customH * item.originalW / item.originalH), customH];
+    return [customH, customH];
+  }
   if (customH == null) {
-    // "Auto": keep this specific image's own aspect ratio instead of a
-    // shared fixed height, so the user only has to set the width.
-    if (item && item.originalW && item.originalH) {
-      return [customW, Math.round(customW * item.originalH / item.originalW)];
-    }
+    if (hasOrig) return [customW, Math.round(customW * item.originalH / item.originalW)];
     return [customW, customW]; // fallback until the image's own dimensions are known
   }
   return [customW, customH];

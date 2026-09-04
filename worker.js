@@ -86,11 +86,19 @@ self.onmessage = async function(e) {
     if (ratio === '1:1') { cw = size; ch = size; }
     else if (ratio === '4:5') { cw = size; ch = Math.round(size * 5 / 4); }
     else {
-      cw = customW;
-      // customH === null/undefined means "auto": keep the (possibly cropped)
-      // image's own aspect ratio instead of forcing a fixed height shared
-      // across the whole batch.
-      ch = (customH != null) ? customH : Math.round(customW * srcH / srcW);
+      // Custom ratio: any dimension left null/undefined ("auto") keeps the
+      // (possibly cropped) image's own aspect ratio for that axis. Leaving
+      // both blank keeps the image at its own size — useful for crop-only /
+      // metadata-only processing without any resize.
+      if (customW == null && customH == null) {
+        cw = srcW; ch = srcH;
+      } else if (customW == null) {
+        cw = Math.round(customH * srcW / srcH); ch = customH;
+      } else if (customH == null) {
+        cw = customW; ch = Math.round(customW * srcH / srcW);
+      } else {
+        cw = customW; ch = customH;
+      }
     }
 
     const canvas = new OffscreenCanvas(cw, ch);
