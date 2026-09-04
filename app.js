@@ -998,6 +998,19 @@ function initCropModal() {
       if (cropDrag.mode.includes('s')) { h = s.h + dyFrac; }
       if (cropDrag.mode.includes('w')) { x = s.x + dxFrac; w = s.w - dxFrac; }
       if (cropDrag.mode.includes('e')) { w = s.w + dxFrac; }
+      if (e.shiftKey) {
+        // Lock aspect ratio (Shift held): let the axis with the larger
+        // relative change drive, then derive the other from the box's
+        // original ratio and re-anchor the fixed opposite corner.
+        const ratio = s.w / s.h;
+        if (Math.abs(w - s.w) / s.w >= Math.abs(h - s.h) / s.h) {
+          h = w / ratio;
+        } else {
+          w = h * ratio;
+        }
+        if (cropDrag.mode.includes('n')) y = s.y + s.h - h;
+        if (cropDrag.mode.includes('w')) x = s.x + s.w - w;
+      }
       cropState = { x, y, w, h };
     }
     clampCropState();
