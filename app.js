@@ -1119,6 +1119,13 @@ function finalizeCard(item, blob, cw, ch, ext) {
       if (e.target.closest('.card-actions, .card-exif-badge, .card-crop-badge')) return;
       openPreview(item.id);
     };
+    const thumbImg = card.querySelector('.card-thumb img');
+    if (thumbImg) {
+      const newThumbUrl = URL.createObjectURL(blob);
+      if (item.thumbUrl) URL.revokeObjectURL(item.thumbUrl);
+      item.thumbUrl = newThumbUrl;
+      thumbImg.src = newThumbUrl;
+    }
     card.querySelector('.card-dl')?.remove();
     const dlBtn = document.createElement('a');
     dlBtn.className = 'card-dl';
