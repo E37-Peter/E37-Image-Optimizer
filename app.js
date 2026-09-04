@@ -671,7 +671,8 @@ function undoLast() {
     if (cardEl && gridEl) {
       const ref = gridEl.children[step.index];
       if (ref && ref !== cardEl) gridEl.insertBefore(cardEl, ref);
-      gsap.from(cardEl, { opacity: 0, scale: 0.9, duration: 0.25, ease: 'power2.out' });
+      gsap.set(cardEl, { opacity: 0, scale: 0.9 });
+      gsap.to(cardEl, { opacity: 1, scale: 1, duration: 0.25, ease: 'power2.out', clearProps: 'opacity,scale' });
     }
     updateProcessBtn();
     updateDuplicateWarnings();
