@@ -410,6 +410,34 @@
     </div>
   </div>
 
+  <!-- Manual crop modal -->
+  <div class="crop-overlay hidden" id="cropOverlay">
+    <div class="crop-modal">
+      <div class="crop-header">
+        <span class="crop-title">Beskär bild</span>
+        <button class="crop-close" id="cropClose">&#x2715;</button>
+      </div>
+      <div class="crop-body">
+        <div class="crop-stage" id="cropStage">
+          <img id="cropImg" alt="" draggable="false">
+          <div class="crop-box" id="cropBox">
+            <div class="crop-handle crop-h-nw" data-h="nw"></div>
+            <div class="crop-handle crop-h-ne" data-h="ne"></div>
+            <div class="crop-handle crop-h-sw" data-h="sw"></div>
+            <div class="crop-handle crop-h-se" data-h="se"></div>
+          </div>
+        </div>
+        <p class="crop-hint">Dra i hörnen för att ändra storlek, eller flytta rutan för att välja vilket område som ska behållas vid optimering.</p>
+      </div>
+      <div class="crop-footer">
+        <button class="btn-secondary" id="cropResetBtn">Återställ (hela bilden)</button>
+        <div class="crop-footer-spacer"></div>
+        <button class="btn-secondary" id="cropCancelBtn">Avbryt</button>
+        <button class="btn-primary" id="cropApplyBtn">Använd beskärning</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>

@@ -322,7 +322,9 @@ function init() {
     const id = parseInt(btn.dataset.id);
     const item = items.find(i => i.id === id);
     if (!item) return;
-    if (btn.dataset.action === 'rotate') {
+    if (btn.dataset.action === 'crop') {
+      openCropModal(item);
+    } else if (btn.dataset.action === 'rotate') {
       item.rotation = ((item.rotation || 0) + 90) % 360;
       const img = $('card-' + id)?.querySelector('img');
       if (img) img.style.transform = item.rotation ? `rotate(${item.rotation}deg)` : '';
@@ -480,9 +482,16 @@ function init() {
   $('metaClose').onclick = closeMetaPanel;
   $('metaCloseBtn').onclick = closeMetaPanel;
   $('metaOverlay').addEventListener('click', e => { if (e.target === $('metaOverlay')) closeMetaPanel(); });
+  $('cropClose').onclick = closeCropModal;
+  $('cropCancelBtn').onclick = closeCropModal;
+  $('cropApplyBtn').onclick = applyCropModal;
+  $('cropResetBtn').onclick = resetCropModal;
+  $('cropOverlay').addEventListener('click', e => { if (e.target === $('cropOverlay')) closeCropModal(); });
+  initCropModal();
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !$('rmOverlay').classList.contains('hidden')) closeRenameModal();
     if (e.key === 'Escape' && !$('metaOverlay').classList.contains('hidden')) closeMetaPanel();
+    if (e.key === 'Escape' && !$('cropOverlay').classList.contains('hidden')) closeCropModal();
     if (e.ctrlKey && e.key === 'Enter' && !$('workArea').classList.contains('hidden') && !processing) $('processBtn').click();
   });
 
@@ -635,6 +644,9 @@ function appendCard(item) {
         EXIF
       </button>
       <div class="card-actions">
+        <button class="card-action-btn" data-action="crop" data-id="${item.id}" title="Beskär">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
+        </button>
         <button class="card-action-btn" data-action="rotate" data-id="${item.id}" title="Rotera 90°">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
         </button>
@@ -642,6 +654,10 @@ function appendCard(item) {
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
+      <button class="card-crop-badge hidden" data-id="${item.id}" title="Manuell beskärning aktiv – klicka för att redigera">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
+        Beskuren
+      </button>
     </div>
     <div class="card-body">
       <div class="card-name" title="${esc(item.name)}">${esc(trimName(item.name))}</div>
@@ -651,10 +667,11 @@ function appendCard(item) {
   $('imageGrid').appendChild(card);
 
   card.querySelector('.card-exif-badge').onclick = e => { e.stopPropagation(); openMetaPanel(item.id); };
+  card.querySelector('.card-crop-badge').onclick = e => { e.stopPropagation(); openCropModal(item); };
 
   card.style.cursor = 'pointer';
   card.onclick = e => {
-    if (e.target.closest('.card-actions, .card-exif-badge')) return;
+    if (e.target.closest('.card-actions, .card-exif-badge, .card-crop-badge')) return;
     openPreview(item.id);
   };
 
@@ -800,6 +817,136 @@ function openMetaPanel(id) {
 
 function closeMetaPanel() {
   $('metaOverlay').classList.add('hidden');
+}
+
+// --- Manual crop modal -----------------------------------------------------
+let cropItem = null;
+let cropImgUrl = null;
+// Crop box state stored as fractions (0-1) of the displayed (already
+// oriented) image, so it's independent of on-screen zoom/rendered size.
+let cropState = { x: 0, y: 0, w: 1, h: 1 };
+let cropDrag = null; // { mode: 'move'|'nw'|'ne'|'sw'|'se', startX, startY, start: {...cropState} }
+
+function openCropModal(item) {
+  cropItem = item;
+  const img = $('cropImg');
+  if (cropImgUrl) URL.revokeObjectURL(cropImgUrl);
+  cropImgUrl = URL.createObjectURL(item.file);
+  img.src = cropImgUrl;
+
+  cropState = item.manualCrop
+    ? { ...item.manualCrop }
+    : { x: 0, y: 0, w: 1, h: 1 };
+
+  img.onload = () => {
+    updateCropBoxUI();
+  };
+
+  $('cropOverlay').classList.remove('hidden');
+}
+
+function closeCropModal() {
+  $('cropOverlay').classList.add('hidden');
+  cropItem = null;
+}
+
+function updateCropBoxUI() {
+  const img = $('cropImg');
+  const box = $('cropBox');
+  const w = img.clientWidth, h = img.clientHeight;
+  if (!w || !h) return;
+  box.style.left = (cropState.x * w) + 'px';
+  box.style.top = (cropState.y * h) + 'px';
+  box.style.width = (cropState.w * w) + 'px';
+  box.style.height = (cropState.h * h) + 'px';
+}
+
+function clampCropState() {
+  cropState.w = Math.max(0.05, Math.min(1, cropState.w));
+  cropState.h = Math.max(0.05, Math.min(1, cropState.h));
+  cropState.x = Math.max(0, Math.min(1 - cropState.w, cropState.x));
+  cropState.y = Math.max(0, Math.min(1 - cropState.h, cropState.y));
+}
+
+function initCropModal() {
+  const img = $('cropImg');
+  const box = $('cropBox');
+
+  const onPointerDown = (mode) => (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const w = img.clientWidth, h = img.clientHeight;
+    if (!w || !h) return;
+    cropDrag = {
+      mode,
+      startX: e.clientX, startY: e.clientY,
+      startFracX: e.clientX / w, startFracY: e.clientY / h,
+      w, h,
+      start: { ...cropState }
+    };
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  };
+
+  box.addEventListener('pointerdown', onPointerDown('move'));
+  box.querySelectorAll('.crop-handle').forEach(h => {
+    h.addEventListener('pointerdown', onPointerDown(h.dataset.h));
+  });
+
+  function onPointerMove(e) {
+    if (!cropDrag) return;
+    const dxFrac = (e.clientX - cropDrag.startX) / cropDrag.w;
+    const dyFrac = (e.clientY - cropDrag.startY) / cropDrag.h;
+    const s = cropDrag.start;
+    if (cropDrag.mode === 'move') {
+      cropState.x = s.x + dxFrac;
+      cropState.y = s.y + dyFrac;
+      cropState.w = s.w;
+      cropState.h = s.h;
+    } else {
+      let { x, y, w, h } = s;
+      if (cropDrag.mode.includes('n')) { y = s.y + dyFrac; h = s.h - dyFrac; }
+      if (cropDrag.mode.includes('s')) { h = s.h + dyFrac; }
+      if (cropDrag.mode.includes('w')) { x = s.x + dxFrac; w = s.w - dxFrac; }
+      if (cropDrag.mode.includes('e')) { w = s.w + dxFrac; }
+      cropState = { x, y, w, h };
+    }
+    clampCropState();
+    updateCropBoxUI();
+  }
+
+  function onPointerUp() {
+    cropDrag = null;
+    document.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('pointerup', onPointerUp);
+  }
+
+  window.addEventListener('resize', () => {
+    if (!$('cropOverlay').classList.contains('hidden')) updateCropBoxUI();
+  });
+}
+
+function applyCropModal() {
+  if (!cropItem) return;
+  const isFullFrame = cropState.x <= 0.001 && cropState.y <= 0.001 &&
+    cropState.w >= 0.999 && cropState.h >= 0.999;
+  cropItem.manualCrop = isFullFrame ? null : { ...cropState };
+  const badge = document.querySelector('#card-' + cropItem.id + ' .card-crop-badge');
+  if (badge) badge.classList.toggle('hidden', !cropItem.manualCrop);
+  if (cropItem.status === 'done') {
+    cropItem.status = 'pending';
+    cropItem.blob = null;
+    setStatus(cropItem.id, 'pending', 'Väntar');
+    const cardEl = $('card-' + cropItem.id);
+    cardEl?.classList.remove('done', 'processing', 'error');
+    cardEl?.classList.add('img-card');
+  }
+  closeCropModal();
+}
+
+function resetCropModal() {
+  cropState = { x: 0, y: 0, w: 1, h: 1 };
+  updateCropBoxUI();
 }
 
 function getCanvasDims(size, item) {
@@ -969,7 +1116,7 @@ function finalizeCard(item, blob, cw, ch, ext) {
     card.className = 'img-card done';
     card.style.cursor = 'pointer';
     card.onclick = e => {
-      if (e.target.closest('.card-actions, .card-exif-badge')) return;
+      if (e.target.closest('.card-actions, .card-exif-badge, .card-crop-badge')) return;
       openPreview(item.id);
     };
     card.querySelector('.card-dl')?.remove();
@@ -1015,7 +1162,7 @@ async function processItemWorker(item, settings, ext) {
         id: item.id,
         buffer,
         mimeType: item.file.type,
-        settings: { ...settings, rotation: item.rotation || 0, ignoreExifOrientation: !!item.ignoreExifOrientation }
+        settings: { ...settings, rotation: item.rotation || 0, ignoreExifOrientation: !!item.ignoreExifOrientation, manualCrop: item.manualCrop || null }
       }, [buffer]);
     });
 
@@ -1063,10 +1210,21 @@ function processItem(item, size, fmt, q, ext) {
 
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const [cw, ch] = getCanvasDims(size, {
-        originalW: item.originalW || img.naturalWidth,
-        originalH: item.originalH || img.naturalHeight
-      });
+      const nW = img.naturalWidth || img.width, nH = img.naturalHeight || img.height;
+      let crop = null;
+      if (item.manualCrop) {
+        crop = {
+          x: Math.round(item.manualCrop.x * nW), y: Math.round(item.manualCrop.y * nH),
+          w: Math.round(item.manualCrop.w * nW), h: Math.round(item.manualCrop.h * nH)
+        };
+      } else if (autoCrop) {
+        crop = detectCropBounds(img);
+      }
+      const srcX = crop ? crop.x : 0, srcY = crop ? crop.y : 0;
+      const srcW = crop ? crop.w : nW;
+      const srcH = crop ? crop.h : nH;
+
+      const [cw, ch] = getCanvasDims(size, { originalW: srcW, originalH: srcH });
       const canvas = document.createElement('canvas');
       canvas.width = cw;
       canvas.height = ch;
@@ -1077,10 +1235,6 @@ function processItem(item, size, fmt, q, ext) {
         ctx.fillRect(0, 0, cw, ch);
       }
 
-      const crop = autoCrop ? detectCropBounds(img) : null;
-      const srcX = crop ? crop.x : 0, srcY = crop ? crop.y : 0;
-      const srcW = crop ? crop.w : (img.naturalWidth || img.width);
-      const srcH = crop ? crop.h : (img.naturalHeight || img.height);
       const rot = (item.rotation || 0) % 360;
       const swap = rot === 90 || rot === 270;
       const effW = swap ? srcH : srcW, effH = swap ? srcW : srcH;

@@ -54,7 +54,7 @@ async function findQuality(canvas, fmt, targetBytes) {
 
 self.onmessage = async function(e) {
   const { id, buffer, mimeType, settings } = e.data;
-  const { size, ratio, customW, customH, fmt, quality, noUpscale, bgColor, sharpness, autoCrop, rotation, padding, ignoreExifOrientation } = settings;
+  const { size, ratio, customW, customH, fmt, quality, noUpscale, bgColor, sharpness, autoCrop, rotation, padding, ignoreExifOrientation, manualCrop } = settings;
 
   try {
     const blob = new Blob([buffer], { type: mimeType });
@@ -68,20 +68,29 @@ self.onmessage = async function(e) {
     // panel, in which case the raw pixel data is used as-is.
     const bitmap = await createImageBitmap(blob, { imageOrientation: ignoreExifOrientation ? 'none' : 'from-image' });
 
+    let srcX = 0, srcY = 0, srcW = bitmap.width, srcH = bitmap.height;
+    if (manualCrop) {
+      // Manual crop takes precedence over auto-crop; coordinates are stored
+      // as fractions (0-1) of the oriented bitmap so they stay valid
+      // regardless of the target canvas size.
+      srcX = Math.round(manualCrop.x * bitmap.width);
+      srcY = Math.round(manualCrop.y * bitmap.height);
+      srcW = Math.round(manualCrop.w * bitmap.width);
+      srcH = Math.round(manualCrop.h * bitmap.height);
+    } else if (autoCrop) {
+      const crop = detectCropBounds(bitmap);
+      srcX = crop.x; srcY = crop.y; srcW = crop.w; srcH = crop.h;
+    }
+
     let cw, ch;
     if (ratio === '1:1') { cw = size; ch = size; }
     else if (ratio === '4:5') { cw = size; ch = Math.round(size * 5 / 4); }
     else {
       cw = customW;
-      // customH === null/undefined means "auto": keep this image's own aspect
-      // ratio instead of forcing a fixed height shared across the whole batch.
-      ch = (customH != null) ? customH : Math.round(customW * bitmap.height / bitmap.width);
-    }
-
-    let srcX = 0, srcY = 0, srcW = bitmap.width, srcH = bitmap.height;
-    if (autoCrop) {
-      const crop = detectCropBounds(bitmap);
-      srcX = crop.x; srcY = crop.y; srcW = crop.w; srcH = crop.h;
+      // customH === null/undefined means "auto": keep the (possibly cropped)
+      // image's own aspect ratio instead of forcing a fixed height shared
+      // across the whole batch.
+      ch = (customH != null) ? customH : Math.round(customW * srcH / srcW);
     }
 
     const canvas = new OffscreenCanvas(cw, ch);
